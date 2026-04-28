@@ -41,7 +41,7 @@ export function usePersistDeclaration() {
 
       const { error: e2 } = await supabase.from("declaration_extracted_data").insert([{
         declaration_id: decl.id,
-        extracted_data: extracted as unknown as Record<string, unknown>,
+        extracted_data: extracted as unknown as never,
         detected_categories: extracted.detectedCategories,
         confidence_score:
           extracted.globalConfidence === "high" ? 0.9 :
@@ -51,13 +51,13 @@ export function usePersistDeclaration() {
 
       const { error: e3 } = await supabase.from("declaration_validated_data").insert([{
         declaration_id: decl.id,
-        validated_data: validated as unknown as Record<string, unknown>,
+        validated_data: validated as unknown as never,
       }]);
       if (e3) throw e3;
 
       const { error: e4 } = await supabase.from("declaration_fiscal_analysis").insert([{
         declaration_id: decl.id,
-        analysis: analysis as unknown as Record<string, unknown>,
+        analysis: analysis as unknown as never,
       }]);
       if (e4) throw e4;
 
