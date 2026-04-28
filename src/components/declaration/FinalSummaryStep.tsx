@@ -13,9 +13,10 @@ interface Props {
   analysis: FiscalAnalysis;
   onPrev: () => void;
   onSave: () => void;
+  saving?: boolean;
 }
 
-export const FinalSummaryStep = ({ analysis, onPrev, onSave }: Props) => {
+export const FinalSummaryStep = ({ analysis, onPrev, onSave, saving = false }: Props) => {
   const handleCopy = async () => {
     const text = [
       `Synthèse fiscale ${analysis.taxYear}`,
@@ -53,8 +54,8 @@ export const FinalSummaryStep = ({ analysis, onPrev, onSave }: Props) => {
           <Button variant="outline" size="sm" onClick={() => toast.info("Export PDF — à venir")} className="gap-2">
             <Download className="h-3.5 w-3.5" /> PDF
           </Button>
-          <Button size="sm" onClick={onSave} className="gap-2">
-            <Save className="h-3.5 w-3.5" /> Enregistrer
+          <Button size="sm" onClick={onSave} disabled={saving} className="gap-2">
+            <Save className="h-3.5 w-3.5" /> {saving ? "Enregistrement…" : "Enregistrer"}
           </Button>
         </div>
       </div>
