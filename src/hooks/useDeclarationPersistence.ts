@@ -46,19 +46,19 @@ export function usePersistDeclaration() {
         confidence_score:
           extracted.globalConfidence === "high" ? 0.9 :
           extracted.globalConfidence === "medium" ? 0.6 : 0.3,
-      });
+      }]);
       if (e2) throw e2;
 
       const { error: e3 } = await supabase.from("declaration_validated_data").insert([{
         declaration_id: decl.id,
         validated_data: validated as unknown as Record<string, unknown>,
-      });
+      }]);
       if (e3) throw e3;
 
       const { error: e4 } = await supabase.from("declaration_fiscal_analysis").insert([{
         declaration_id: decl.id,
         analysis: analysis as unknown as Record<string, unknown>,
-      });
+      }]);
       if (e4) throw e4;
 
       return decl.id;
