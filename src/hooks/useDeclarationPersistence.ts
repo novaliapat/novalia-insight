@@ -39,7 +39,7 @@ export function usePersistDeclaration() {
         .single();
       if (e1 || !decl) throw e1 ?? new Error("Création déclaration échouée");
 
-      const { error: e2 } = await supabase.from("declaration_extracted_data").insert({
+      const { error: e2 } = await supabase.from("declaration_extracted_data").insert([{
         declaration_id: decl.id,
         extracted_data: extracted as unknown as Record<string, unknown>,
         detected_categories: extracted.detectedCategories,
@@ -49,13 +49,13 @@ export function usePersistDeclaration() {
       });
       if (e2) throw e2;
 
-      const { error: e3 } = await supabase.from("declaration_validated_data").insert({
+      const { error: e3 } = await supabase.from("declaration_validated_data").insert([{
         declaration_id: decl.id,
         validated_data: validated as unknown as Record<string, unknown>,
       });
       if (e3) throw e3;
 
-      const { error: e4 } = await supabase.from("declaration_fiscal_analysis").insert({
+      const { error: e4 } = await supabase.from("declaration_fiscal_analysis").insert([{
         declaration_id: decl.id,
         analysis: analysis as unknown as Record<string, unknown>,
       });
