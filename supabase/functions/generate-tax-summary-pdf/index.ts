@@ -2,7 +2,7 @@
 // Rôle : générer un PDF de la synthèse finale.
 // V1 : squelette, branchera pdf-lib/jsPDF en V2.
 
-import { corsHeaders } from "@supabase/supabase-js/cors";
+import { corsHeaders } from "npm:@supabase/supabase-js/cors";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
