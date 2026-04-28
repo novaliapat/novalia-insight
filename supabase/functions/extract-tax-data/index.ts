@@ -2,13 +2,14 @@
 // Rôle : extraire les données fiscales des documents importés.
 // V1 : retourne des données mockées. V2 branchera Lovable AI multimodal.
 
-import { corsHeaders } from "npm:@supabase/supabase-js/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -18,9 +19,6 @@ Deno.serve(async (req) => {
     }
 
     // V2 : récupérer les fichiers depuis storage et appeler Lovable AI
-    // const { fileIds, declarationId } = await req.json();
-
-    // --- MOCK ---
     const mock = {
       taxpayer: { fullName: "Mock", taxHousehold: "Marié, 2 parts" },
       taxYear: 2024,
@@ -38,9 +36,9 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("extract-tax-data error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });

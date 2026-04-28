@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useDeclarationFlow } from "@/hooks/useDeclarationFlow";
+import { usePersistDeclaration } from "@/hooks/useDeclarationPersistence";
+import { useAuth } from "@/hooks/useAuth";
 import { FileUploadStep } from "./FileUploadStep";
 import { ExtractionReviewStep } from "./ExtractionReviewStep";
 import { ManualValidationStep } from "./ManualValidationStep";
@@ -19,17 +21,36 @@ const STEPS = [
 
 export const NewDeclarationFlow = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const flow = useDeclarationFlow();
   const { state } = flow;
+  const { save, saving } = usePersistDeclaration();
 
-  const handleSave = () => {
-    toast.success("Analyse enregistrée (mock)");
-    navigate("/");
+  const handleSave = async () => {
+    if (!user) {
+      toast.error("Session expirée");
+      return;
+    }
+    if (!state.extractedData || !state.validatedData || !state.analysis) {
+      toast.error("Données incomplètes");
+      return;
+    }
+    const id = await save({
+      userId: user.id,
+      extracted: state.extractedData,
+      validated: state.validatedData,
+      analysis: state.analysis,
+    });
+    if (id) {
+      toast.success("Analyse enregistrée");
+      navigate(`/declaration/${id}`);
+    } else {
+      toast.error("Échec de l'enregistrement");
+    }
   };
 
   return (
     <div className="space-y-8">
-      {/* Stepper */}
       <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
         <ol className="flex items-center justify-between gap-2">
           {STEPS.map((s, idx) => {
@@ -64,7 +85,6 @@ export const NewDeclarationFlow = () => {
         </ol>
       </div>
 
-      {/* Step content */}
       <div>
         {state.step === 1 && (
           <FileUploadStep
@@ -103,7 +123,12 @@ export const NewDeclarationFlow = () => {
           />
         )}
         {state.step === 5 && state.analysis && (
-          <FinalSummaryStep analysis={state.analysis} onPrev={flow.prev} onSave={handleSave} />
+          <FinalSummaryStep
+            analysis={state.analysis}
+            onPrev={flow.prev}
+            onSave={handleSave}
+            saving={saving}
+          />
         )}
       </div>
     </div>

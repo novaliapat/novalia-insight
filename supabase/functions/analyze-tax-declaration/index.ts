@@ -16,10 +16,12 @@
 //
 // V1 : retourne une analyse mockée.
 
-import { corsHeaders } from "npm:@supabase/supabase-js/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -29,17 +31,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // V2 — pseudo-code RAG par catégorie :
-    //
-    // const { validatedData } = await req.json();
-    // const results = await Promise.all(
-    //   validatedData.detectedCategories.map(async (cat) => {
-    //     const sources = await searchRagLibrary(cat, buildQueryFor(cat, validatedData));
-    //     return { category: cat, sources };
-    //   })
-    // );
-    // const analysis = await callLovableAI({ validatedData, ragByCategory: results });
 
     const mock = {
       summary: "Analyse mockée — branchement RAG à venir.",
@@ -59,9 +50,9 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("analyze-tax-declaration error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });
