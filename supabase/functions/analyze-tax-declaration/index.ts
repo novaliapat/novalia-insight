@@ -16,7 +16,7 @@
 //
 // V1 : retourne une analyse mockée.
 
-import { corsHeaders } from "@supabase/supabase-js/cors";
+import { corsHeaders } from "npm:@supabase/supabase-js/cors";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
