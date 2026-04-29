@@ -11,6 +11,10 @@ import { deriveExtractionStatus } from "./extractionStatus.ts";
 import { countExtractedFields } from "./extractionAudit.ts";
 import { deriveReviewItemsFromAudit } from "../_shared/review/deriveReviewItems.ts";
 import {
+  computeReviewStatusFromItems,
+  type ReviewItemStatus,
+} from "../_shared/review/computeReviewStatus.ts";
+import {
   ExtractedDataSchema,
   ExtractTaxDataResponseSchema,
   type ExtractedData,
@@ -335,6 +339,17 @@ Deno.serve(async (req) => {
           .upsert(rows, { onConflict: "declaration_id,dedup_key", ignoreDuplicates: true });
         if (reviewErr) console.warn("review items upsert failed", reviewErr);
       }
+      // Recalcul du review_status après (re)génération des items
+      const { data: allItems } = await admin
+        .from("declaration_review_items")
+        .select("status")
+        .eq("declaration_id", declarationId);
+      const statuses = (allItems ?? []).map((r) => r.status as ReviewItemStatus);
+      const reviewStatus = computeReviewStatusFromItems(statuses);
+      await admin
+        .from("declarations")
+        .update({ review_status: reviewStatus })
+        .eq("id", declarationId);
     } catch (e) {
       console.warn("derive review items failed", e);
     }
