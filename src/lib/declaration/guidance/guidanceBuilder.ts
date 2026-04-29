@@ -506,14 +506,14 @@ function buildMissingSources(args: {
     if (!payload || payload.sources.length === 0) {
       missing.push({
         category: cat,
-        reason: `Aucune source RAG ingérée pour la catégorie "${cat}".`,
+        reason: "Documentation fiscale non disponible pour cette catégorie. Source officielle à confirmer.",
         suggestedSources: ["Brochure pratique IR 2025", "Notices DGFiP", "BOFiP"],
         blocksHighConfidence: true,
       });
     } else if (!payload.hasOfficial) {
       missing.push({
         category: cat,
-        reason: `Aucune source officielle (DGFiP/BOFiP) pour la catégorie "${cat}".`,
+        reason: "Source DGFiP / brochure non disponible pour cette catégorie. Vérification manuelle requise.",
         suggestedSources: ["Brochure pratique IR 2025", "Notices DGFiP", "BOFiP"],
         blocksHighConfidence: true,
       });
