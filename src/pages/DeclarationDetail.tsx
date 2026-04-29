@@ -173,6 +173,8 @@ const DeclarationDetail = () => {
                   hasManualReviewCases={
                     (data.analysis?.taxCases ?? []).some((c: any) => c?.requiresManualReview)
                   }
+                  hasGuidance={!!guidance.guidance}
+                  guidanceStatus={guidance.status}
                 />
               </div>
             )}
