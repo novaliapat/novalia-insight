@@ -3,57 +3,51 @@ import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useDeclarationHistory } from "@/hooks/useDeclarationHistory";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { formatDateFr } from "@/lib/declaration/utils/taxFormatting";
 import { ExtractionStatusBadge } from "./ExtractionStatusBadge";
-import {
-  ExtractionStatusLabel,
-  type ExtractionStatus,
-} from "@/lib/declaration/status/extractionStatus";
 import { DeclarationReviewStatusBadge } from "./review/DeclarationReviewStatusBadge";
-import { Plus, FileText, Loader2, Eye, Filter } from "lucide-react";
+import {
+  applyFilter,
+  computeDashboardCounts,
+  DashboardFilterLabel,
+  sortByPriority,
+  type DashboardFilter,
+} from "@/lib/declaration/dashboard/dashboardFilters";
+import {
+  Plus,
+  FileText,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+  ListChecks,
+  XCircle,
+} from "lucide-react";
 
-type StatusFilter = "all" | ExtractionStatus | "no_extraction";
-
-const FILTER_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
-  { value: "all", label: "Tous les statuts" },
-  { value: "no_extraction", label: "Pas d'extraction" },
-  { value: "extraction_processing", label: ExtractionStatusLabel.extraction_processing },
-  { value: "extraction_completed", label: ExtractionStatusLabel.extraction_completed },
-  {
-    value: "extraction_completed_with_warnings",
-    label: ExtractionStatusLabel.extraction_completed_with_warnings,
-  },
-  { value: "extraction_needs_review", label: ExtractionStatusLabel.extraction_needs_review },
-  { value: "extraction_failed", label: ExtractionStatusLabel.extraction_failed },
+const FILTER_ORDER: DashboardFilter[] = [
+  "all",
+  "to_process",
+  "review_completed",
+  "extraction_with_warnings",
+  "extraction_failed",
 ];
 
 export const DeclarationDashboard = () => {
   const { declarations, loading } = useDeclarationHistory();
-  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [filter, setFilter] = useState<DashboardFilter>("all");
 
-  const needsReview = useMemo(
-    () => declarations.filter((d) => d.extraction_status === "extraction_needs_review"),
-    [declarations],
-  );
+  const counts = useMemo(() => computeDashboardCounts(declarations), [declarations]);
 
   const filtered = useMemo(() => {
-    if (filter === "all") return declarations;
-    if (filter === "no_extraction") return declarations.filter((d) => !d.extraction_status);
-    return declarations.filter((d) => d.extraction_status === filter);
+    const base = applyFilter(declarations, filter);
+    return filter === "to_process" ? sortByPriority(base) : base;
   }, [declarations, filter]);
 
   return (
     <div className="space-y-10">
+      {/* HERO */}
       <section className="rounded-2xl border border-border bg-gradient-subtle overflow-hidden shadow-elegant">
         <div className="p-8 md:p-12 grid md:grid-cols-[1fr,auto] gap-6 items-center">
           <div>
@@ -76,52 +70,62 @@ export const DeclarationDashboard = () => {
         </div>
       </section>
 
-      {needsReview.length > 0 && (
-        <section className="rounded-2xl border border-warning/40 bg-warning/5 p-6 space-y-3">
-          <div className="flex items-center gap-2">
-            <Eye className="h-5 w-5 text-warning" />
-            <h2 className="font-display text-lg font-semibold text-foreground">
-              Revue manuelle requise
-            </h2>
-            <Badge variant="secondary" className="ml-1">{needsReview.length}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Ces analyses contiennent des données à vérifier avant validation (confiance faible
-            ou incohérences détectées).
-          </p>
-          <div className="grid gap-2">
-            {needsReview.map((d) => (
-              <Link to={`/declaration/${d.id}`} key={d.id}>
-                <Card className="p-4 hover:shadow-elegant transition-smooth flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium text-foreground truncate">{d.title}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Année {d.tax_year} · {formatDateFr(d.created_at)}
-                    </div>
-                  </div>
-                  <ExtractionStatusBadge status="extraction_needs_review" />
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* COMPTEURS */}
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <SummaryCard
+          icon={ListChecks}
+          label="Analyses totales"
+          value={counts.total}
+          tone="muted"
+          onClick={() => setFilter("all")}
+          active={filter === "all"}
+        />
+        <SummaryCard
+          icon={AlertTriangle}
+          label="À traiter"
+          value={counts.toProcess}
+          tone="warning"
+          onClick={() => setFilter("to_process")}
+          active={filter === "to_process"}
+        />
+        <SummaryCard
+          icon={CheckCircle2}
+          label="Revue terminée"
+          value={counts.reviewCompleted}
+          tone="success"
+          onClick={() => setFilter("review_completed")}
+          active={filter === "review_completed"}
+        />
+        <SummaryCard
+          icon={XCircle}
+          label="Extraction échouée"
+          value={counts.extractionFailed}
+          tone="destructive"
+          onClick={() => setFilter("extraction_failed")}
+          active={filter === "extraction_failed"}
+        />
+      </section>
 
+      {/* LISTE */}
       <section>
         <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-          <h2 className="font-display text-xl font-semibold">Mes analyses</h2>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={filter} onValueChange={(v) => setFilter(v as StatusFilter)}>
-              <SelectTrigger className="w-[240px] h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FILTER_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <h2 className="font-display text-xl font-semibold">
+            {filter === "all" ? "Mes analyses" : DashboardFilterLabel[filter]}
+          </h2>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {FILTER_ORDER.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-smooth ${
+                  filter === f
+                    ? "bg-foreground text-background border-foreground"
+                    : "bg-background text-muted-foreground border-border hover:text-foreground"
+                }`}
+              >
+                {DashboardFilterLabel[f]}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -147,12 +151,18 @@ export const DeclarationDashboard = () => {
           <div className="grid gap-3">
             {filtered.map((d) => (
               <Link to={`/declaration/${d.id}`} key={d.id}>
-                <Card className="p-5 hover:shadow-elegant transition-smooth flex items-center justify-between gap-4 flex-wrap">
+                <Card className="p-5 hover:shadow-elegant transition-smooth flex items-start justify-between gap-4 flex-wrap">
                   <div className="min-w-0">
                     <div className="font-medium text-foreground truncate">{d.title}</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       Année fiscale {d.tax_year} · créée le {formatDateFr(d.created_at)}
                     </div>
+                    {d.review_pending_count > 0 && (
+                      <div className="text-xs text-warning mt-1.5">
+                        {d.review_pending_count} point{d.review_pending_count > 1 ? "s" : ""} de revue en attente
+                        {d.has_pending_error && " · alerte critique"}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap justify-end">
                     {d.extraction_status && (
@@ -172,3 +182,39 @@ export const DeclarationDashboard = () => {
     </div>
   );
 };
+
+// ---------------------------------------------------------------------------
+
+interface SummaryCardProps {
+  icon: typeof ListChecks;
+  label: string;
+  value: number;
+  tone: "muted" | "warning" | "success" | "destructive";
+  onClick: () => void;
+  active: boolean;
+}
+
+const TONES: Record<SummaryCardProps["tone"], string> = {
+  muted: "text-muted-foreground",
+  warning: "text-warning",
+  success: "text-success",
+  destructive: "text-destructive",
+};
+
+function SummaryCard({ icon: Icon, label, value, tone, onClick, active }: SummaryCardProps) {
+  return (
+    <button onClick={onClick} className="text-left">
+      <Card
+        className={`p-4 transition-smooth hover:shadow-elegant ${
+          active ? "border-foreground/40 shadow-elegant" : ""
+        }`}
+      >
+        <div className="flex items-center gap-2 mb-1.5">
+          <Icon className={`h-4 w-4 ${TONES[tone]}`} />
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+        </div>
+        <div className="font-display text-2xl font-semibold text-foreground">{value}</div>
+      </Card>
+    </button>
+  );
+}
