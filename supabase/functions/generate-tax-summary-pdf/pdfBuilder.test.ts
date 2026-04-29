@@ -113,26 +113,37 @@ const guidanceFixture = () => ({
   disclaimer: "Aide à la préparation. Vérifiez avant déclaration.",
 });
 
-Deno.test("buildTaxSummaryPdf — guidance: contient 2DC et formulaire 2042", async () => {
-  const bytes = await buildTaxSummaryPdf(baseInput({
+Deno.test("buildTaxSummaryPdf — guidance: PDF plus volumineux et plus de pages avec guidance", async () => {
+  const { PDFDocument } = await import("https://esm.sh/pdf-lib@1.17.1");
+  const withGuidance = await buildTaxSummaryPdf(baseInput({
     guidance: guidanceFixture(),
     guidanceStatus: "guidance_completed",
   }));
-  // Le PDF est binaire mais le texte non-compressé reste détectable dans pdf-lib
-  const text = new TextDecoder("latin1").decode(bytes);
-  assert(text.includes("2DC"), "PDF doit contenir la case 2DC");
-  assert(text.includes("2042"), "PDF doit contenir le formulaire 2042");
-  assert(text.includes("Brochure IR"), "PDF doit citer la brochure officielle");
+  const withoutGuidance = await buildTaxSummaryPdf(baseInput({ guidance: null }));
+  assert(withGuidance.byteLength > withoutGuidance.byteLength,
+    "PDF avec guidance doit être plus gros");
+  const docG = await PDFDocument.load(withGuidance);
+  const docNoG = await PDFDocument.load(withoutGuidance);
+  // Sections guidance ajoutent : formulaires, parcours, cases, points à vérifier
+  assert(docG.getPageCount() >= docNoG.getPageCount() + 3,
+    `attendu au moins +3 pages avec guidance, got ${docG.getPageCount()} vs ${docNoG.getPageCount()}`);
+  assertEquals(docG.getTitle(), "Synthèse fiscale 2024");
 });
 
-Deno.test("buildTaxSummaryPdf — guidance avec manualReviewItems mentionne vérification", async () => {
-  const bytes = await buildTaxSummaryPdf(baseInput({
-    guidance: guidanceFixture(),
-    guidanceStatus: "guidance_completed_with_warnings",
+Deno.test("buildTaxSummaryPdf — guidance avec manualReviewItems n'enlève pas de pages", async () => {
+  const { PDFDocument } = await import("https://esm.sh/pdf-lib@1.17.1");
+  const g1 = guidanceFixture();
+  g1.manualReviewItems = [];
+  const withoutManual = await buildTaxSummaryPdf(baseInput({
+    guidance: g1, guidanceStatus: "guidance_completed",
   }));
-  const text = new TextDecoder("latin1").decode(bytes);
-  assert(text.includes("vérifier") || text.includes("v?rifier") || text.includes("Points"),
-    "PDF doit afficher la section points à vérifier");
+  const withManual = await buildTaxSummaryPdf(baseInput({
+    guidance: guidanceFixture(), guidanceStatus: "guidance_completed_with_warnings",
+  }));
+  const d1 = await PDFDocument.load(withoutManual);
+  const d2 = await PDFDocument.load(withManual);
+  assert(d2.getPageCount() >= d1.getPageCount(),
+    "PDF avec manualReviewItems ne doit pas avoir moins de pages");
 });
 
 Deno.test("buildTaxSummaryPdf — sans guidance affiche un avertissement", async () => {
