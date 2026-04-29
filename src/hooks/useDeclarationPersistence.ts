@@ -3,75 +3,82 @@ import { supabase } from "@/integrations/supabase/client";
 import type { ExtractedData } from "@/lib/declaration/schemas/extractedDataSchema";
 import type { FiscalAnalysis } from "@/lib/declaration/schemas/fiscalAnalysisSchema";
 
-interface SaveInput {
-  userId: string;
-  extracted: ExtractedData;
+interface FinalizeInput {
+  declarationId: string;
   validated: ExtractedData;
   analysis: FiscalAnalysis;
 }
 
 export interface SavedDeclaration {
   id: string;
-  declaration: { id: string; title: string; tax_year: number };
-  extracted: ExtractedData;
-  validated: ExtractedData;
-  analysis: FiscalAnalysis;
+  declaration: { id: string; title: string; tax_year: number; status: string };
+  extracted: ExtractedData | null;
+  validated: ExtractedData | null;
+  analysis: FiscalAnalysis | null;
 }
 
-export function usePersistDeclaration() {
+/**
+ * Finalise une déclaration existante (créée en draft à l'étape 1).
+ * - upsert validated_data
+ * - upsert fiscal_analysis
+ * - status -> finalized
+ * - audit log
+ */
+export function useFinalizeDeclaration() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const save = useCallback(async ({ userId, extracted, validated, analysis }: SaveInput) => {
+  const finalize = useCallback(async ({ declarationId, validated, analysis }: FinalizeInput) => {
     setSaving(true);
     setError(null);
     try {
-      const title = `Déclaration ${analysis.taxYear}`;
-      const { data: decl, error: e1 } = await supabase
-        .from("declarations")
-        .insert({
-          user_id: userId,
-          title,
-          tax_year: analysis.taxYear,
-          status: "finalized",
-        })
-        .select()
-        .single();
-      if (e1 || !decl) throw e1 ?? new Error("Création déclaration échouée");
-
-      const { error: e2 } = await supabase.from("declaration_extracted_data").insert([{
-        declaration_id: decl.id,
-        extracted_data: extracted as unknown as never,
-        detected_categories: extracted.detectedCategories,
-        confidence_score:
-          extracted.globalConfidence === "high" ? 0.9 :
-          extracted.globalConfidence === "medium" ? 0.6 : 0.3,
-      }]);
+      // Upsert validated
+      await supabase
+        .from("declaration_validated_data")
+        .delete()
+        .eq("declaration_id", declarationId);
+      const { error: e2 } = await supabase.from("declaration_validated_data").insert({
+        declaration_id: declarationId,
+        validated_data: validated as unknown as never,
+      });
       if (e2) throw e2;
 
-      const { error: e3 } = await supabase.from("declaration_validated_data").insert([{
-        declaration_id: decl.id,
-        validated_data: validated as unknown as never,
-      }]);
+      // Upsert analysis
+      await supabase
+        .from("declaration_fiscal_analysis")
+        .delete()
+        .eq("declaration_id", declarationId);
+      const { error: e3 } = await supabase.from("declaration_fiscal_analysis").insert({
+        declaration_id: declarationId,
+        analysis: analysis as unknown as never,
+      });
       if (e3) throw e3;
 
-      const { error: e4 } = await supabase.from("declaration_fiscal_analysis").insert([{
-        declaration_id: decl.id,
-        analysis: analysis as unknown as never,
-      }]);
+      // Status + titre
+      const title = `Déclaration ${analysis.taxYear}`;
+      const { error: e4 } = await supabase
+        .from("declarations")
+        .update({ status: "finalized", title, tax_year: analysis.taxYear })
+        .eq("id", declarationId);
       if (e4) throw e4;
 
-      return decl.id;
+      await supabase.from("declaration_audit_logs").insert({
+        declaration_id: declarationId,
+        action: "declaration_finalized",
+        metadata: { categories: analysis.analyzedCategories },
+      });
+
+      return true;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur d'enregistrement";
       setError(msg);
-      return null;
+      return false;
     } finally {
       setSaving(false);
     }
   }, []);
 
-  return { save, saving, error };
+  return { finalize, saving, error };
 }
 
 export function useLoadDeclaration() {
@@ -93,9 +100,9 @@ export function useLoadDeclaration() {
       setData({
         id,
         declaration: d.data,
-        extracted: (ex.data?.extracted_data ?? null) as ExtractedData,
-        validated: (va.data?.validated_data ?? null) as ExtractedData,
-        analysis: (an.data?.analysis ?? null) as FiscalAnalysis,
+        extracted: (ex.data?.extracted_data ?? null) as ExtractedData | null,
+        validated: (va.data?.validated_data ?? null) as ExtractedData | null,
+        analysis: (an.data?.analysis ?? null) as FiscalAnalysis | null,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur de chargement");

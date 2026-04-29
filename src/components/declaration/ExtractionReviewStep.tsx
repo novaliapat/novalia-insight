@@ -5,29 +5,34 @@ import { ConfidenceBadge } from "./ConfidenceBadge";
 import { WarningCard } from "./WarningCard";
 import { useDeclarationExtraction } from "@/hooks/useDeclarationExtraction";
 import { formatEuro, TaxCategoryLabel } from "@/lib/declaration/utils/taxFormatting";
-import { ArrowLeft, ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, RotateCw, Sparkles } from "lucide-react";
 import type { ExtractedData } from "@/lib/declaration/schemas/extractedDataSchema";
-import type { UploadedFile } from "@/hooks/useDeclarationFlow";
 
 interface Props {
-  files: UploadedFile[];
+  declarationId: string | null;
   extractedData: ExtractedData | null;
   onExtracted: (data: ExtractedData) => void;
   onPrev: () => void;
   onNext: () => void;
 }
 
-export const ExtractionReviewStep = ({ files, extractedData, onExtracted, onPrev, onNext }: Props) => {
-  const { status, error, data, extract } = useDeclarationExtraction();
+export const ExtractionReviewStep = ({
+  declarationId,
+  extractedData,
+  onExtracted,
+  onPrev,
+  onNext,
+}: Props) => {
+  const { status, error, data, extract, reset } = useDeclarationExtraction();
 
   useEffect(() => {
-    if (!extractedData) {
-      extract(files.map((f) => f.file)).then((d) => {
+    if (!extractedData && declarationId && status === "idle") {
+      void extract(declarationId).then((d) => {
         if (d) onExtracted(d);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [declarationId]);
 
   const display = extractedData ?? data;
 
@@ -37,7 +42,7 @@ export const ExtractionReviewStep = ({ files, extractedData, onExtracted, onPrev
         <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
         <div className="font-display text-xl text-foreground">Analyse de vos documents…</div>
         <p className="text-sm text-muted-foreground mt-2">
-          L'IA extrait les données. Aucun raisonnement fiscal n'est encore appliqué.
+          L'IA extrait les données présentes dans vos documents. Aucun raisonnement fiscal n'est appliqué à cette étape.
         </p>
       </Card>
     );
@@ -45,11 +50,25 @@ export const ExtractionReviewStep = ({ files, extractedData, onExtracted, onPrev
 
   if (status === "error" || !display) {
     return (
-      <Card className="p-8 animate-fade-in">
+      <Card className="p-8 animate-fade-in space-y-4">
         <WarningCard title="Erreur d'extraction" message={error ?? "Une erreur est survenue."} />
-        <Button onClick={onPrev} variant="outline" className="mt-4 gap-2">
-          <ArrowLeft className="h-4 w-4" /> Retour
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={onPrev} variant="outline" className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Retour
+          </Button>
+          <Button
+            onClick={() => {
+              if (!declarationId) return;
+              reset();
+              void extract(declarationId).then((d) => {
+                if (d) onExtracted(d);
+              });
+            }}
+            className="gap-2"
+          >
+            <RotateCw className="h-4 w-4" /> Réessayer
+          </Button>
+        </div>
       </Card>
     );
   }
