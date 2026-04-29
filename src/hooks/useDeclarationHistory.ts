@@ -10,6 +10,7 @@ export interface DeclarationWithExtraction extends Declaration {
   /** Statut détaillé de l'extraction si l'étape a été lancée. */
   extraction_status: ExtractionStatus | null;
   detected_categories: string[];
+  review_status: string | null;
 }
 
 export function useDeclarationHistory() {
@@ -50,10 +51,12 @@ export function useDeclarationHistory() {
       const ex = byId.get(d.id);
       const raw = ex?.extraction_status;
       const parsed = raw ? ExtractionStatusEnum.safeParse(raw) : null;
+      const reviewStatus = (d as unknown as { review_status?: string | null })?.review_status ?? null;
       return {
         ...(d as Declaration),
         extraction_status: parsed?.success ? parsed.data : null,
         detected_categories: ex?.detected_categories ?? [],
+        review_status: reviewStatus,
       };
     });
     setDeclarations(enriched);

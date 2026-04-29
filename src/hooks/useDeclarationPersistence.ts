@@ -16,6 +16,7 @@ export interface SavedDeclaration {
   validated: ExtractedData | null;
   analysis: FiscalAnalysis | null;
   extractionStatus: string | null;
+  reviewStatus: string | null;
 }
 
 /**
@@ -105,6 +106,7 @@ export function useLoadDeclaration() {
         validated: (va.data?.validated_data ?? null) as ExtractedData | null,
         analysis: (an.data?.analysis ?? null) as FiscalAnalysis | null,
         extractionStatus: (ex.data?.extraction_status ?? null) as string | null,
+        reviewStatus: ((d.data as unknown as { review_status?: string | null })?.review_status ?? null) as string | null,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur de chargement");
