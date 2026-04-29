@@ -35,12 +35,14 @@ const reviewTable = () => (supabase as any).from("declaration_review_items");
 async function logAudit(declarationId: string, action: string, metadata: Record<string, unknown>) {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id ?? null;
-  await supabase.from("declaration_audit_logs").insert({
-    declaration_id: declarationId,
-    user_id: userId,
-    action,
-    metadata,
-  });
+  await supabase.from("declaration_audit_logs").insert([
+    {
+      declaration_id: declarationId,
+      user_id: userId,
+      action,
+      metadata: metadata as never,
+    },
+  ]);
 }
 
 export function useDeclarationReviewItems(declarationId: string | null | undefined) {
