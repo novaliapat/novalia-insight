@@ -175,11 +175,12 @@ describe("ExportPanel — historique & génération", () => {
     await waitFor(() =>
       expect(mockGetSignedUrl).toHaveBeenCalledWith("u/abc/file.pdf"),
     );
-    await waitFor(() =>
+    await waitFor(() => {
+      const links = screen.getAllByRole("link");
       expect(
-        screen.getByRole("link", { name: /ouvrir dans un nouvel onglet/i }),
-      ).toBeInTheDocument(),
-    );
+        links.some((l) => l.getAttribute("href") === "https://signed.example/pdf.pdf"),
+      ).toBe(true);
+    });
   });
 
   it("appelle generate et déclenche la mise à jour de la preview", async () => {
