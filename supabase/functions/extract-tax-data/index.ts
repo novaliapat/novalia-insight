@@ -1,17 +1,13 @@
-// Edge function: extract-tax-data
-// Lot 2 — Extraction réelle via Lovable AI multimodal (Gemini).
-// - Vérifie l'auth
-// - Vérifie que l'utilisateur possède la déclaration
-// - Récupère les fichiers depuis Supabase Storage (bucket privé)
-// - Appelle Lovable AI avec les fichiers en input multimodal
-// - Valide la réponse avec Zod (schéma strict)
-// - Persiste extracted_data + audit log
-// - Aucune logique fiscale, aucune case fiscale proposée
-
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { z } from "https://esm.sh/zod@3.23.8";
-import { EXTRACTION_SYSTEM_PROMPT, EXTRACTION_USER_PROMPT } from "./extractionPrompt.ts";
+import {
+  EXTRACTION_SYSTEM_PROMPT,
+  EXTRACTION_USER_PROMPT,
+  EXTRACTION_PROMPT_VERSION,
+} from "./extractionPrompt.ts";
+
+const MODEL_USED = "google/gemini-2.5-pro";
 
 // ---------------- Schémas Zod (mirror du front) ----------------
 
