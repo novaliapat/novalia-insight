@@ -9,6 +9,7 @@ import {
   ExtractedEvidenceCard,
   flattenEvidences,
 } from "./ExtractedEvidenceCard";
+import { EvidenceQualityPanel } from "./EvidenceQualityPanel";
 import { AuditJsonViewer } from "./AuditJsonViewer";
 import { useDeclarationExtraction } from "@/hooks/useDeclarationExtraction";
 import { TaxCategoryLabel } from "@/lib/declaration/utils/taxFormatting";
