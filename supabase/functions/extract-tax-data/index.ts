@@ -328,11 +328,18 @@ Deno.serve(async (req) => {
 
     // --- Génération automatique des "review items" (idempotent via dedup_key) ---
     try {
-      const derived = deriveReviewItemsFromAudit({
-        consistencyIssues: audit.consistencyIssues,
-        warnings: audit.warnings,
-        missingData: audit.missingData,
-      });
+      const derived = [
+        ...deriveReviewItemsFromAudit({
+          consistencyIssues: audit.consistencyIssues,
+          warnings: audit.warnings,
+          missingData: audit.missingData,
+        }),
+        ...deriveWeakEvidenceReviewItems({
+          ifu: extracted.ifu as unknown as Array<Record<string, unknown>>,
+          scpi: extracted.scpi as unknown as Array<Record<string, unknown>>,
+          lifeInsurance: extracted.lifeInsurance as unknown as Array<Record<string, unknown>>,
+        }),
+      ];
       if (derived.length > 0) {
         const rows = derived.map((d) => ({
           declaration_id: declarationId,
