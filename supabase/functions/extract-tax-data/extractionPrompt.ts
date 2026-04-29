@@ -1,7 +1,7 @@
 // Prompt d'extraction fiscale — Lot 2
 // -----------------------------------------------------------------------------
 // Version du prompt : à incrémenter à chaque modification de comportement.
-export const EXTRACTION_PROMPT_VERSION = "v1.0.0";
+export const EXTRACTION_PROMPT_VERSION = "v1.1.0";
 
 // -----------------------------------------------------------------------------
 // CLAUSE DE CONFORMITÉ
