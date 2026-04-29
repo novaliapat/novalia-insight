@@ -26,6 +26,7 @@ const DeclarationDetail = () => {
   const { id } = useParams();
   const { load, loading, error, data } = useLoadDeclaration();
   const [overrideOpen, setOverrideOpen] = useState(false);
+  const guidance = useDeclarationGuidance(id ?? null);
 
   useEffect(() => {
     if (id) load(id);
