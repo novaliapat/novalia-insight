@@ -9,6 +9,7 @@ import { useLoadDeclaration } from "@/hooks/useDeclarationPersistence";
 import { FinalSummaryStep } from "@/components/declaration/FinalSummaryStep";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
 import { ExtractionStatusBadge } from "@/components/declaration/ExtractionStatusBadge";
+import { ExtractionAuditPanel } from "@/components/declaration/audit/ExtractionAuditPanel";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { ExtractionStatusEnum } from "@/lib/declaration/contracts/statusContract";
 
@@ -74,6 +75,12 @@ const DeclarationDetail = () => {
               </div>
             </div>
           </Card>
+        )}
+
+        {!loading && id && (
+          <div className="mb-6">
+            <ExtractionAuditPanel declarationId={id} />
+          </div>
         )}
 
         {!loading && (error || !data?.analysis) && (
