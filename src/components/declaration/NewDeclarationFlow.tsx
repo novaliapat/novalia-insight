@@ -67,6 +67,68 @@ export const NewDeclarationFlow = () => {
     flow.next();
   };
 
+  // ── Persistance progressive : validated_data dès l'étape 3 ──────────
+  const persistValidated = useCallback(
+    async (declarationId: string, validated: ExtractedData) => {
+      try {
+        await supabase
+          .from("declaration_validated_data")
+          .delete()
+          .eq("declaration_id", declarationId);
+        await supabase.from("declaration_validated_data").insert({
+          declaration_id: declarationId,
+          validated_data: validated as unknown as never,
+        });
+      } catch (e) {
+        console.warn("[flow] persistValidated failed", e);
+      }
+    },
+    [],
+  );
+
+  // ── Persistance progressive : fiscal_analysis dès l'étape 4 ─────────
+  const persistAnalysis = useCallback(
+    async (declarationId: string, analysis: FiscalAnalysis) => {
+      try {
+        await supabase
+          .from("declaration_fiscal_analysis")
+          .delete()
+          .eq("declaration_id", declarationId);
+        await supabase.from("declaration_fiscal_analysis").insert({
+          declaration_id: declarationId,
+          analysis: analysis as unknown as never,
+        });
+        await supabase
+          .from("declarations")
+          .update({
+            title: `Déclaration ${analysis.taxYear}`,
+            tax_year: analysis.taxYear,
+          })
+          .eq("id", declarationId);
+      } catch (e) {
+        console.warn("[flow] persistAnalysis failed", e);
+      }
+    },
+    [],
+  );
+
+  // ── Génération auto du guide après analyse ──────────────────────────
+  const triggerGuidanceGeneration = useCallback(async (declarationId: string) => {
+    try {
+      const { data: existing } = await supabase
+        .from("declaration_guidance")
+        .select("id")
+        .eq("declaration_id", declarationId)
+        .maybeSingle();
+      if (existing) return;
+      await supabase.functions.invoke("generate-declaration-guidance", {
+        body: { declarationId },
+      });
+    } catch (e) {
+      console.warn("[flow] triggerGuidanceGeneration failed", e);
+    }
+  }, []);
+
   const doSave = async () => {
     if (!user) {
       toast.error("Session expirée");
