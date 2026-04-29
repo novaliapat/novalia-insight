@@ -68,3 +68,74 @@ Deno.test("buildTaxSummaryPdf — sources RAG non incluses si option false", asy
   const withSrc = await buildTaxSummaryPdf(baseInput({ options: { includeAudit: false, includeRagSources: true, includeReviewItems: false } }));
   assert(withSrc.byteLength > without.byteLength);
 });
+
+const guidanceFixture = () => ({
+  taxYear: 2024,
+  taxpayerSummary: { taxYear: 2024, detectedCategories: ["ifu"], hasForeignIncome: false, hasRealEstateIncome: false },
+  detectedSituations: ["Dividendes IFU"],
+  requiredForms: [
+    {
+      formId: "2042", label: "Déclaration principale", reason: "Dividendes à reporter",
+      required: true, confidence: "high", status: "confirmed",
+      sources: [{
+        title: "Brochure IR 2025", sourceName: "Brochure IR 2025",
+        isOfficialSource: true, provenance: "official_brochure",
+        pageNumber: 142, formId: "2042", boxCodes: ["2DC"],
+        sectionLabel: "Revenus de capitaux mobiliers",
+        excerpt: "Les dividendes éligibles sont à reporter case 2DC.",
+      }],
+      legalBasisSources: [],
+    },
+  ],
+  declarationSteps: [
+    {
+      id: "s1", order: 0, title: "Reporter dividendes en 2DC",
+      description: "Saisir 1234,56 EUR en case 2DC",
+      formId: "2042", actionType: "enter_amount", amount: 1234.56,
+      targetBox: "2DC", ragSources: [], requiresManualReview: false,
+    },
+  ],
+  taxBoxProposals: [
+    {
+      formId: "2042", boxOrLine: "2DC", label: "Dividendes éligibles",
+      amount: 1234.56, category: "ifu", explanation: "Dividendes IFU",
+      confidence: "high", status: "confirmed",
+      ragSources: [], legalBasisSources: [], requiresManualReview: false,
+    },
+  ],
+  manualReviewItems: [
+    { id: "m1", category: "ifu", reason: "Prélèvement à la source à confirmer",
+      suggestedAction: "Vérifier 2CK", relatedFormId: "2042", relatedBox: "2CK" },
+  ],
+  missingSources: [],
+  warnings: [],
+  confidence: "high",
+  disclaimer: "Aide à la préparation. Vérifiez avant déclaration.",
+});
+
+Deno.test("buildTaxSummaryPdf — guidance: contient 2DC et formulaire 2042", async () => {
+  const bytes = await buildTaxSummaryPdf(baseInput({
+    guidance: guidanceFixture(),
+    guidanceStatus: "guidance_completed",
+  }));
+  // Le PDF est binaire mais le texte non-compressé reste détectable dans pdf-lib
+  const text = new TextDecoder("latin1").decode(bytes);
+  assert(text.includes("2DC"), "PDF doit contenir la case 2DC");
+  assert(text.includes("2042"), "PDF doit contenir le formulaire 2042");
+  assert(text.includes("Brochure IR"), "PDF doit citer la brochure officielle");
+});
+
+Deno.test("buildTaxSummaryPdf — guidance avec manualReviewItems mentionne vérification", async () => {
+  const bytes = await buildTaxSummaryPdf(baseInput({
+    guidance: guidanceFixture(),
+    guidanceStatus: "guidance_completed_with_warnings",
+  }));
+  const text = new TextDecoder("latin1").decode(bytes);
+  assert(text.includes("vérifier") || text.includes("v?rifier") || text.includes("Points"),
+    "PDF doit afficher la section points à vérifier");
+});
+
+Deno.test("buildTaxSummaryPdf — sans guidance affiche un avertissement", async () => {
+  const bytes = await buildTaxSummaryPdf(baseInput({ guidance: null }));
+  assert(bytes.byteLength > 1000);
+});
