@@ -576,8 +576,8 @@ export async function buildTaxSummaryPdf(input: PdfBuildInput): Promise<Uint8Arr
   const usingValidated = Object.keys(validatedRoot).length > 0;
 
   if (!usingValidated) {
-    drawText(ctx, "⚠ Données non encore validées par l'utilisateur — affichage des données extraites.", {
-      size: 9, color: COLORS.warning, italic: true as any,
+    drawText(ctx, "/!\\ Données non encore validées par l'utilisateur — affichage des données extraites.", {
+      size: 9, color: COLORS.warning, font: ctx.italic,
     });
     ctx.cursorY -= 4;
   }
