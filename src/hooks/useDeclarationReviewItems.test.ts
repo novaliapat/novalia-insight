@@ -1,10 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 
-// --- Mock Supabase client ---
-const updateSpy = vi.fn();
-const invokeSpy = vi.fn();
-
+// --- Mock Supabase client (factory hoistée — pas de variables externes) ---
 vi.mock("@/integrations/supabase/client", () => {
   const itemsRow = {
     id: "item-1",
@@ -22,13 +19,15 @@ vi.mock("@/integrations/supabase/client", () => {
     updated_at: "2026-04-29T10:00:00.000Z",
   };
 
+  const updateSpy = vi.fn(() => ({
+    eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+  }));
+  const invokeSpy = vi.fn();
   const builder = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     order: vi.fn().mockResolvedValue({ data: [itemsRow], error: null }),
-    update: updateSpy.mockReturnValue({
-      eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-    }),
+    update: updateSpy,
   };
 
   return {
@@ -37,15 +36,22 @@ vi.mock("@/integrations/supabase/client", () => {
       functions: { invoke: invokeSpy },
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } }) },
     },
+    __spies: { updateSpy, invokeSpy },
   };
 });
+
+// Récupération des spies exposés par le mock (typés en any, dédiés au test)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import * as supabaseModule from "@/integrations/supabase/client";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const spies = (supabaseModule as any).__spies as { updateSpy: ReturnType<typeof vi.fn>; invokeSpy: ReturnType<typeof vi.fn> };
 
 import { useDeclarationReviewItems } from "./useDeclarationReviewItems";
 
 describe("useDeclarationReviewItems", () => {
   beforeEach(() => {
-    updateSpy.mockClear();
-    invokeSpy.mockReset();
+    spies.updateSpy.mockClear();
+    spies.invokeSpy.mockReset();
   });
 
   it("charge les items au montage", async () => {
@@ -56,7 +62,7 @@ describe("useDeclarationReviewItems", () => {
   });
 
   it("markResolved appelle l'edge function update-review-item (et pas .update direct)", async () => {
-    invokeSpy.mockResolvedValue({
+    spies.invokeSpy.mockResolvedValue({
       data: {
         ok: true,
         reviewItem: { id: "item-1", declaration_id: "decl-1", status: "resolved", note: null },
@@ -72,16 +78,15 @@ describe("useDeclarationReviewItems", () => {
       await result.current.markResolved(result.current.items[0]);
     });
 
-    expect(invokeSpy).toHaveBeenCalledWith("update-review-item", {
+    expect(spies.invokeSpy).toHaveBeenCalledWith("update-review-item", {
       body: { reviewItemId: "item-1", action: "resolve", note: undefined },
     });
-    // Aucun .update direct sur la table
-    expect(updateSpy).not.toHaveBeenCalled();
+    expect(spies.updateSpy).not.toHaveBeenCalled();
     expect(result.current.items[0].status).toBe("resolved");
   });
 
   it("markIgnored → action ignore", async () => {
-    invokeSpy.mockResolvedValue({
+    spies.invokeSpy.mockResolvedValue({
       data: {
         ok: true,
         reviewItem: { id: "item-1", declaration_id: "decl-1", status: "ignored", note: null },
@@ -94,14 +99,14 @@ describe("useDeclarationReviewItems", () => {
     await act(async () => {
       await result.current.markIgnored(result.current.items[0]);
     });
-    expect(invokeSpy).toHaveBeenCalledWith("update-review-item", {
+    expect(spies.invokeSpy).toHaveBeenCalledWith("update-review-item", {
       body: { reviewItemId: "item-1", action: "ignore", note: undefined },
     });
-    expect(updateSpy).not.toHaveBeenCalled();
+    expect(spies.updateSpy).not.toHaveBeenCalled();
   });
 
   it("reopen → action reopen", async () => {
-    invokeSpy.mockResolvedValue({
+    spies.invokeSpy.mockResolvedValue({
       data: {
         ok: true,
         reviewItem: { id: "item-1", declaration_id: "decl-1", status: "pending", note: null },
@@ -114,13 +119,13 @@ describe("useDeclarationReviewItems", () => {
     await act(async () => {
       await result.current.reopen(result.current.items[0]);
     });
-    expect(invokeSpy).toHaveBeenCalledWith("update-review-item", {
+    expect(spies.invokeSpy).toHaveBeenCalledWith("update-review-item", {
       body: { reviewItemId: "item-1", action: "reopen", note: undefined },
     });
   });
 
   it("setNote → action update_note avec note transmise", async () => {
-    invokeSpy.mockResolvedValue({
+    spies.invokeSpy.mockResolvedValue({
       data: {
         ok: true,
         reviewItem: { id: "item-1", declaration_id: "decl-1", status: "pending", note: "ok" },
@@ -133,15 +138,15 @@ describe("useDeclarationReviewItems", () => {
     await act(async () => {
       await result.current.setNote(result.current.items[0], "ok");
     });
-    expect(invokeSpy).toHaveBeenCalledWith("update-review-item", {
+    expect(spies.invokeSpy).toHaveBeenCalledWith("update-review-item", {
       body: { reviewItemId: "item-1", action: "update_note", note: "ok" },
     });
     expect(result.current.items[0].note).toBe("ok");
-    expect(updateSpy).not.toHaveBeenCalled();
+    expect(spies.updateSpy).not.toHaveBeenCalled();
   });
 
   it("propage les erreurs de l'edge function", async () => {
-    invokeSpy.mockResolvedValue({ data: null, error: { message: "Accès refusé" } });
+    spies.invokeSpy.mockResolvedValue({ data: null, error: { message: "Accès refusé" } });
     const { result } = renderHook(() => useDeclarationReviewItems("decl-1"));
     await waitFor(() => expect(result.current.items.length).toBe(1));
     await expect(

@@ -312,10 +312,9 @@ Deno.test("ne fait pas confiance au front pour declaration_id : ignore le champ 
     buildRequest({
       reviewItemId: ITEM_PENDING,
       action: "resolve",
-      // @ts-expect-error injection volontaire — sera ignorée par le schéma
       declaration_id: FAKE_DECL,
       user_id: OTHER,
-    }),
+    } as unknown as Record<string, unknown>),
     deps,
   );
   assertEquals(res.status, 200);
