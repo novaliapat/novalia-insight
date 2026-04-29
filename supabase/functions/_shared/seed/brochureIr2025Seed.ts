@@ -5,8 +5,9 @@
 // de cases. Les `content` sont des extraits courts (≤ ~600 caractères) issus de la
 // brochure et peuvent légèrement différer de la mise en page originale (espaces /
 // césures normalisés). Toujours vérifier avec la brochure officielle complète.
-import type { TaxCategory } from "@/lib/declaration/contracts/extractedDataContract";
-import type { TaxFormId } from "@/lib/declaration/guidance/guidanceSchemas";
+// Mirror Deno — pas d'import @/, types locaux
+type TaxCategory = string;
+type TaxFormId = string;
 
 export interface BrochureSeedChunk {
   category: TaxCategory;
