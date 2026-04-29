@@ -106,6 +106,11 @@ export const ExtractedDataSchema = z.object({
   missingData: z.array(z.string()).default([]),
 
   globalConfidence: ConfidenceLevelEnum.default("medium"),
+
+  // Traçabilité de l'extraction
+  extractionPromptVersion: z.string().optional(),
+  extractedAt: z.string().optional(), // ISO 8601
+  modelUsed: z.string().optional(),
 });
 
 export type ExtractedData = z.infer<typeof ExtractedDataSchema>;
