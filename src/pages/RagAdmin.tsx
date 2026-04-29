@@ -98,6 +98,71 @@ const RagAdmin = () => {
           <span className="text-foreground">Admin RAG fiscal</span>
         </nav>
 
+        {/* Brochure IR 2025 — seed officiel prioritaire */}
+        <Card className="p-6 space-y-4 mb-6 border-primary/40">
+          <div className="flex items-start gap-3">
+            <BookOpen className="h-5 w-5 text-primary mt-0.5" />
+            <div className="flex-1">
+              <h2 className="font-display text-lg font-semibold text-foreground">
+                Brochure pratique IR 2025
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Source officielle DGFiP — seed structuré par catégorie, page et code de case.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="rounded-md border border-border p-3">
+              <div className="text-2xl font-display font-semibold text-foreground">
+                {BROCHURE_IR_2025_SEED.length}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Chunks disponibles</div>
+            </div>
+            <div className="rounded-md border border-border p-3">
+              <div className="text-2xl font-display font-semibold text-foreground">
+                {brochureCategories.length}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Catégories couvertes</div>
+            </div>
+            <div className="rounded-md border border-border p-3">
+              <div className="text-2xl font-display font-semibold text-foreground">2025</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Millésime fiscal</div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {brochureCategories.map((c) => (
+              <span
+                key={c}
+                className="text-[10px] uppercase tracking-wide bg-muted px-2 py-0.5 rounded"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+
+          {brochureResult && (
+            <div className="text-xs rounded-md bg-muted/40 border border-border p-3 space-y-0.5">
+              <div>
+                <strong>{brochureResult.insertedChunks}</strong> chunks ingérés ·{" "}
+                <strong>{brochureResult.skippedChunks}</strong> déjà présents (dédoublonnés)
+              </div>
+              <div className="text-muted-foreground">
+                Documents créés : {brochureResult.insertedDocuments} · Catégories :{" "}
+                {brochureResult.categories.join(", ")}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button onClick={ingestBrochure} disabled={brochureBusy} className="gap-1.5">
+              {brochureBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Ingest brochure IR 2025
+            </Button>
+          </div>
+        </Card>
+
         <Card className="p-6 space-y-5">
           <div className="flex items-start gap-3">
             <BookPlus className="h-5 w-5 text-primary mt-0.5" />
