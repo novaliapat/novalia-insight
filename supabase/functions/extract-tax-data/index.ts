@@ -25,6 +25,7 @@ import {
   type ExtractionAudit,
   type ExtractionStatus,
 } from "../_shared/contracts/extractionContracts.ts";
+import { normalizeAiExtractionResponse, shapeOf } from "./normalizeAiResponse.ts";
 
 const MODEL_USED = "google/gemini-2.5-pro";
 
@@ -33,9 +34,65 @@ const MODEL_USED = "google/gemini-2.5-pro";
 const RequestSchema = z.object({
   declarationId: z.string().uuid(),
   dryRun: z.boolean().optional().default(false),
+  debug: z.boolean().optional().default(false),
 });
 
 // ---------------- Tool schema (structured output IA) ----------------
+
+const CONFIDENT_NUMBER_SCHEMA = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    value: { type: "number" },
+    confidence: { type: "string", enum: ["high", "medium", "low"] },
+    sourceDocument: { type: "string" },
+    note: { type: "string" },
+  },
+  required: ["value", "confidence"],
+};
+
+const IFU_ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    institution: { type: "string" },
+    accountNumber: { type: "string" },
+    dividends: CONFIDENT_NUMBER_SCHEMA,
+    interests: CONFIDENT_NUMBER_SCHEMA,
+    capitalGains: CONFIDENT_NUMBER_SCHEMA,
+    withholdingTax: CONFIDENT_NUMBER_SCHEMA,
+    socialContributions: CONFIDENT_NUMBER_SCHEMA,
+  },
+  required: ["institution"],
+};
+
+const SCPI_ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    scpiName: { type: "string" },
+    managementCompany: { type: "string" },
+    frenchIncome: CONFIDENT_NUMBER_SCHEMA,
+    foreignIncome: CONFIDENT_NUMBER_SCHEMA,
+    deductibleInterests: CONFIDENT_NUMBER_SCHEMA,
+    socialContributions: CONFIDENT_NUMBER_SCHEMA,
+  },
+  required: ["scpiName"],
+};
+
+const LIFE_ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    contractName: { type: "string" },
+    insurer: { type: "string" },
+    contractAge: { type: "string", enum: ["less_than_8", "more_than_8"] },
+    withdrawals: CONFIDENT_NUMBER_SCHEMA,
+    taxableShare: CONFIDENT_NUMBER_SCHEMA,
+    withholdingTax: CONFIDENT_NUMBER_SCHEMA,
+  },
+  required: ["contractName"],
+};
 
 const TOOL_SCHEMA = {
   type: "function",
@@ -67,9 +124,9 @@ const TOOL_SCHEMA = {
             ],
           },
         },
-        ifu: { type: "array", items: { type: "object" } },
-        scpi: { type: "array", items: { type: "object" } },
-        lifeInsurance: { type: "array", items: { type: "object" } },
+        ifu: { type: "array", items: IFU_ITEM_SCHEMA },
+        scpi: { type: "array", items: SCPI_ITEM_SCHEMA },
+        lifeInsurance: { type: "array", items: LIFE_ITEM_SCHEMA },
         warnings: { type: "array", items: { type: "string" } },
         missingData: { type: "array", items: { type: "string" } },
         globalConfidence: { type: "string", enum: ["high", "medium", "low"] },
@@ -117,7 +174,7 @@ Deno.serve(async (req) => {
     if (!parsedBody.success) {
       return jsonError(400, "Paramètres invalides", parsedBody.error.flatten());
     }
-    const { declarationId, dryRun } = parsedBody.data;
+    const { declarationId, dryRun, debug } = parsedBody.data;
 
     // --- Ownership ---
     const admin = createClient(supabaseUrl, supabaseServiceKey);
@@ -206,10 +263,46 @@ Deno.serve(async (req) => {
       return jsonError(502, "Réponse IA non parsable", String(e));
     }
 
-    const validated = ExtractedDataSchema.safeParse(raw);
+    // --- Logs de debug propres (jamais le contenu doc) ---
+    console.log("[extract-tax-data] AI response received", {
+      declarationId,
+      numberOfFiles: files.length,
+      fileNames: files.map((f) => f.file_name),
+      modelUsed: MODEL_USED,
+      extractionPromptVersion: EXTRACTION_PROMPT_VERSION,
+      rawShape: shapeOf(raw),
+    });
+
+    // --- Normalisation défensive AVANT Zod ---
+    const normResult = normalizeAiExtractionResponse(raw);
+    if (normResult.changed) {
+      console.warn("[extract-tax-data] normalisation appliquée", {
+        declarationId,
+        warnings: normResult.warnings,
+      });
+    }
+
+    const validated = ExtractedDataSchema.safeParse(normResult.normalized);
     if (!validated.success) {
-      console.error("Zod validation failed", validated.error.flatten());
-      return jsonError(502, "Réponse IA non conforme au schéma", validated.error.flatten());
+      const zodErrors = validated.error.flatten();
+      console.error("[extract-tax-data] Zod validation failed", {
+        declarationId,
+        zodErrors,
+        normalizationWarnings: normResult.warnings,
+        normalizedShape: shapeOf(normResult.normalized),
+      });
+      return jsonError(
+        502,
+        "Réponse IA non conforme au schéma",
+        debug
+          ? {
+              zodErrors,
+              normalizationWarnings: normResult.warnings,
+              normalizedCandidate: normResult.normalized,
+              rawModelShape: shapeOf(raw),
+            }
+          : { zodErrors, normalizationWarnings: normResult.warnings },
+      );
     }
     const extracted: ExtractedData = validated.data;
 
