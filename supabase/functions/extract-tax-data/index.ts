@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
     if (!parsedBody.success) {
       return jsonError(400, "Paramètres invalides", parsedBody.error.flatten());
     }
-    const { declarationId, dryRun } = parsedBody.data;
+    const { declarationId, dryRun, debug } = parsedBody.data;
 
     // --- Ownership ---
     const admin = createClient(supabaseUrl, supabaseServiceKey);
