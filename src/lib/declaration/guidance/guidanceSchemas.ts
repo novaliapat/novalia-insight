@@ -30,9 +30,10 @@ export type CatalogStatus = z.infer<typeof CatalogStatusEnum>;
 
 // Origine d'une source RAG / documentaire
 export const SourceProvenanceEnum = z.enum([
-  "manual_seed",     // résumé synthétique rédigé à la main, à vérifier
-  "official_fetch",  // ingéré depuis URL officielle (phase 2)
-  "verified",        // relu et confirmé
+  "manual_seed",        // résumé synthétique rédigé à la main, à vérifier
+  "official_brochure",  // extrait structuré de la Brochure IR (page sourcée)
+  "official_fetch",     // ingéré depuis URL officielle (phase 2)
+  "verified",           // relu et confirmé
   "deprecated",
 ]);
 export type SourceProvenance = z.infer<typeof SourceProvenanceEnum>;
@@ -44,9 +45,15 @@ export const FormSourceSchema = z.object({
   title: z.string(),
   sourceName: z.string().nullable().optional(),
   sourceUrl: z.string().nullable().optional(),
+  sourceType: z.string().optional(),
   taxYear: z.number().int().nullable().optional(),
   isOfficialSource: z.boolean().default(false),
   provenance: SourceProvenanceEnum.default("manual_seed"),
+  // Ancrage brochure / formulaire / section
+  pageNumber: z.number().int().positive().optional(),
+  formId: TaxFormIdEnum.optional(),
+  sectionLabel: z.string().optional(),
+  boxCodes: z.array(z.string()).optional(),
   excerpt: z.string().max(600).optional(),
   relevanceScore: z.number().min(0).max(1).optional(),
   warning: z.string().optional(),
