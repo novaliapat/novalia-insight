@@ -9,6 +9,7 @@ import {
 import { runExtractionConsistencyChecks } from "./consistencyChecks.ts";
 import { deriveExtractionStatus } from "./extractionStatus.ts";
 import { countExtractedFields } from "./extractionAudit.ts";
+import { deriveReviewItemsFromAudit } from "../_shared/review/deriveReviewItems.ts";
 import {
   ExtractedDataSchema,
   ExtractTaxDataResponseSchema,
@@ -300,12 +301,44 @@ Deno.serve(async (req) => {
       .update({ status: "extraction_done" })
       .eq("id", declarationId);
 
-    await admin.from("declaration_audit_logs").insert({
-      declaration_id: declarationId,
-      user_id: userId,
-      action: "extraction_audit_generated",
-      metadata: JSON.parse(JSON.stringify(audit)),
-    });
+    const { data: auditLogRow } = await admin
+      .from("declaration_audit_logs")
+      .insert({
+        declaration_id: declarationId,
+        user_id: userId,
+        action: "extraction_audit_generated",
+        metadata: JSON.parse(JSON.stringify(audit)),
+      })
+      .select("id")
+      .single();
+
+    // --- Génération automatique des "review items" (idempotent via dedup_key) ---
+    try {
+      const derived = deriveReviewItemsFromAudit({
+        consistencyIssues: audit.consistencyIssues,
+        warnings: audit.warnings,
+        missingData: audit.missingData,
+      });
+      if (derived.length > 0) {
+        const rows = derived.map((d) => ({
+          declaration_id: declarationId,
+          audit_log_id: auditLogRow?.id ?? null,
+          source_type: d.sourceType,
+          source_code: d.sourceCode,
+          severity: d.severity,
+          field: d.field,
+          message: d.message,
+          dedup_key: d.dedupKey,
+        }));
+        const { error: reviewErr } = await admin
+          .from("declaration_review_items")
+          .upsert(rows, { onConflict: "declaration_id,dedup_key", ignoreDuplicates: true });
+        if (reviewErr) console.warn("review items upsert failed", reviewErr);
+      }
+    } catch (e) {
+      console.warn("derive review items failed", e);
+    }
+
 
     return new Response(JSON.stringify(responseValidated.data), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
