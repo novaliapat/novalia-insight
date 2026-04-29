@@ -15,6 +15,7 @@ import { QuickReviewPanel } from "@/components/declaration/review/QuickReviewPan
 import { PendingReviewBanner } from "@/components/declaration/review/PendingReviewBanner";
 import { ReviewBlockingBanner } from "@/components/declaration/review/ReviewBlockingBanner";
 import { ReviewOverrideDialog } from "@/components/declaration/review/ReviewOverrideDialog";
+import { RagSearchPanel } from "@/components/rag/RagSearchPanel";
 import { useReviewBlockingState } from "@/hooks/useReviewBlockingState";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { ExtractionStatusEnum } from "@/lib/declaration/contracts/statusContract";
@@ -128,6 +129,13 @@ const DeclarationDetail = () => {
           <div className="mb-6 space-y-4">
             <ExtractionAuditPanel declarationId={id} />
             <QuickReviewPanel declarationId={id} />
+            {data && (
+              <RagSearchPanel
+                declarationId={id}
+                taxYear={data.declaration.tax_year ?? null}
+                detectedCategories={data.extracted?.detectedCategories ?? []}
+              />
+            )}
           </div>
         )}
 

@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NewDeclaration from "./pages/NewDeclaration";
 import DeclarationDetail from "./pages/DeclarationDetail";
+import RagAdmin from "./pages/RagAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/declaration/nouvelle" element={<ProtectedRoute><NewDeclaration /></ProtectedRoute>} />
             <Route path="/declaration/:id" element={<ProtectedRoute><DeclarationDetail /></ProtectedRoute>} />
+            <Route path="/admin/rag" element={<ProtectedRoute><RagAdmin /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
