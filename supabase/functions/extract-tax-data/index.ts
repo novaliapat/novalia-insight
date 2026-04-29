@@ -83,7 +83,7 @@ const ExtractedDataSchema = z.object({
   warnings: z.array(z.string()).default([]),
   missingData: z.array(z.string()).default([]),
   globalConfidence: ConfidenceLevelEnum.default("medium"),
-}).strict(); // refuse silencieusement tout champ inattendu (ex: métadonnées hallucinées)
+}); // mode .strip() par défaut : champs inconnus (métadonnées hallucinées) silencieusement supprimés.
 
 type ExtractedData = z.infer<typeof ExtractedDataSchema>;
 
