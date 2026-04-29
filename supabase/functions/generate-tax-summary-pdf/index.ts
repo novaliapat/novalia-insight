@@ -106,6 +106,8 @@ Deno.serve(async (req) => {
       detectedCategories: (extracted as any)?.detected_categories ?? [],
       validated: validated as any,
       analysis: analysis?.analysis ?? null,
+      guidance: guidanceRow?.guidance ?? null,
+      guidanceStatus: guidanceRow?.status ?? null,
       reviewItems: reviewRes.data ?? [],
       auditLogs: auditRes.data ?? [],
       ragSourcesUsed,
