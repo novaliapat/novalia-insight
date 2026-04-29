@@ -1,38 +1,18 @@
+// Le contrat ExtractionAudit / ConsistencyIssue est défini dans
+// `@/lib/declaration/contracts/auditContract`. Ce module expose les
+// helpers de comptage et le fallback de construction côté UI.
+
 import type {
   ExtractedData,
-  ExtractionMetadata,
-} from "@/lib/declaration/schemas/extractedDataSchema";
-import type { ConsistencyIssue } from "@/lib/declaration/validation/extractionConsistencyChecks";
-import type { ExtractionStatus } from "@/lib/declaration/status/extractionStatus";
+} from "@/lib/declaration/contracts/extractedDataContract";
+import type { ExtractionMetadata } from "@/lib/declaration/contracts/extractionResultContract";
+import type {
+  ConsistencyIssue,
+  ExtractionAudit,
+} from "@/lib/declaration/contracts/auditContract";
+import type { ExtractionStatus } from "@/lib/declaration/contracts/statusContract";
 
-/**
- * SOURCE DE VÉRITÉ : l'audit officiel est généré et persisté par
- * l'edge function `extract-tax-data`. Le front n'écrit plus jamais
- * dans `declaration_audit_logs` pour `extraction_audit_generated`.
- *
- * Ce module reste utile pour :
- *  - le typage de l'audit retourné par l'edge function
- *  - un fallback de calcul UI si l'audit backend est absent (rétrocompat)
- */
-
-export interface ExtractionAudit {
-  declarationId: string;
-  extractedAt: string;
-  extractionPromptVersion: string;
-  modelUsed?: string;
-  dryRun: boolean;
-  detectedCategories: string[];
-  globalConfidence: "high" | "medium" | "low";
-  status: ExtractionStatus;
-  numberOfFiles: number;
-  numberOfExtractedFields: number;
-  numberOfWarnings: number;
-  numberOfMissingData: number;
-  numberOfConsistencyIssues: number;
-  consistencyIssues: ConsistencyIssue[];
-  warnings: string[];
-  missingData: string[];
-}
+export type { ConsistencyIssue, ExtractionAudit };
 
 interface ConfidentField { value: number; confidence: string; }
 
@@ -55,10 +35,7 @@ export function countExtractedFields(data: ExtractedData): number {
   return n;
 }
 
-/**
- * Fallback uniquement : utilisé si l'edge function n'a pas renvoyé d'audit
- * (cas legacy / extraction historique). Ne sert PAS de source de vérité.
- */
+/** Fallback uniquement (legacy) — l'audit officiel vient de l'edge function. */
 export function buildExtractionAuditFallback(params: {
   declarationId: string;
   data: ExtractedData;
