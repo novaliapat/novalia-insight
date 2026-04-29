@@ -42,6 +42,72 @@ export interface BuildGuidanceInput {
   ragByCategory: Record<string, CategoryRagPayload>;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Fallback catalogue : transforme une entrée du BOX_CATALOG_2025 en FormSource
+// "officielle" lorsqu'elle est sourcée brochure (page connue). Permet d'afficher
+// les cases utiles même quand la table tax_rag_chunks est vide.
+// ─────────────────────────────────────────────────────────────────────────
+export function sourceFromBoxEntry(entry: BoxCatalogEntry): FormSource {
+  return {
+    title: `${entry.formId} ${entry.boxOrLine} — ${entry.label}`,
+    sourceName: entry.sourceName,
+    sourceUrl: entry.sourceUrl,
+    sourceType: entry.sourceType,
+    taxYear: entry.taxYear,
+    isOfficialSource: entry.sourceType === "official_brochure",
+    provenance: entry.sourceType === "official_brochure"
+      ? "official_brochure"
+      : "manual_seed",
+    pageNumber: entry.pageNumber ?? undefined,
+    formId: entry.formId,
+    sectionLabel: entry.boxOrLine,
+    boxCodes: [entry.boxOrLine],
+    excerpt: entry.description,
+    relevanceScore: 0.9,
+  };
+}
+
+export function catalogSourcesForCategory(category: TaxCategory): FormSource[] {
+  return BOX_CATALOG_2025
+    .filter((b) => b.category === category && b.sourceType === "official_brochure" && b.pageNumber)
+    .map(sourceFromBoxEntry);
+}
+
+export function mergeRagWithCatalogFallback(
+  ragByCategory: Record<string, CategoryRagPayload>,
+  detectedCategories: TaxCategory[],
+): Record<string, CategoryRagPayload> {
+  const merged: Record<string, CategoryRagPayload> = { ...ragByCategory };
+  for (const cat of detectedCategories) {
+    const existing = merged[cat];
+    const catalogSources = catalogSourcesForCategory(cat);
+    if (catalogSources.length === 0) {
+      if (!existing) merged[cat] = { category: cat, sources: [], hasOfficial: false };
+      continue;
+    }
+    const baseSources = existing?.sources ?? [];
+    const seen = new Set(
+      baseSources.map(
+        (s) => `${s.title}|${s.pageNumber ?? ""}|${(s.boxCodes ?? []).join(",")}`,
+      ),
+    );
+    const fallbackToAdd: FormSource[] = [];
+    for (const s of catalogSources) {
+      const key = `${s.title}|${s.pageNumber ?? ""}|${(s.boxCodes ?? []).join(",")}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        fallbackToAdd.push(s);
+      }
+    }
+    merged[cat] = {
+      category: cat,
+      sources: [...baseSources, ...fallbackToAdd],
+      hasOfficial: (existing?.hasOfficial ?? false) || fallbackToAdd.some((s) => s.isOfficialSource),
+    };
+  }
+  return merged;
+}
+
 export interface BuildGuidanceOutput {
   guidance: DeclarationGuidance;
   status: "guidance_completed" | "guidance_completed_with_warnings" | "guidance_failed";
@@ -336,7 +402,7 @@ function buildProposalsFromMapping(args: {
       confidence = "low";
       status = "needs_review";
       requiresManualReview = true;
-      blockingReason = `Aucune source officielle disponible pour la catégorie "${entry.category}".`;
+      blockingReason = "Source DGFiP non retrouvée automatiquement. La case reste proposée à titre indicatif et doit être vérifiée.";
     } else if (reviewHint) {
       confidence = "medium";
       status = "needs_review";
@@ -436,14 +502,14 @@ function buildMissingSources(args: {
     if (!payload || payload.sources.length === 0) {
       missing.push({
         category: cat,
-        reason: `Aucune source RAG ingérée pour la catégorie "${cat}".`,
+        reason: "Documentation fiscale non disponible pour cette catégorie. Source officielle à confirmer.",
         suggestedSources: ["Brochure pratique IR 2025", "Notices DGFiP", "BOFiP"],
         blocksHighConfidence: true,
       });
     } else if (!payload.hasOfficial) {
       missing.push({
         category: cat,
-        reason: `Aucune source officielle (DGFiP/BOFiP) pour la catégorie "${cat}".`,
+        reason: "Source DGFiP / brochure non disponible pour cette catégorie. Vérification manuelle requise.",
         suggestedSources: ["Brochure pratique IR 2025", "Notices DGFiP", "BOFiP"],
         blocksHighConfidence: true,
       });
@@ -459,12 +525,19 @@ export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidan
   const d = input.validatedData;
   const detected = deriveEffectiveCategories(d);
 
+  // Fallback catalogue brochure : injecte les sources brochure officielles
+  // pour ne jamais laisser une case sans source identifiable.
+  const effectiveRagByCategory = mergeRagWithCatalogFallback(
+    input.ragByCategory,
+    detected,
+  );
+
   const { situations, hasForeignIncome, hasRealEstateIncome } = detectSituations(d);
 
   const requiredForms = buildRequiredForms({
     detectedCategories: detected,
     hasForeignIncome,
-    ragByCategory: input.ragByCategory,
+    ragByCategory: effectiveRagByCategory,
   });
 
   const { amountByBox, reviewHints } = mapValidatedAmountsToBoxes(d);
@@ -473,7 +546,7 @@ export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidan
     detectedCategories: detected,
     amountByBox,
     reviewHints,
-    ragByCategory: input.ragByCategory,
+    ragByCategory: effectiveRagByCategory,
   });
 
   const steps = buildDeclarationSteps({
@@ -484,7 +557,7 @@ export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidan
   const manualReviewItems = buildManualReviewItems(d);
   const missingSources = buildMissingSources({
     detectedCategories: detected,
-    ragByCategory: input.ragByCategory,
+    ragByCategory: effectiveRagByCategory,
   });
 
   // Confiance globale grossière

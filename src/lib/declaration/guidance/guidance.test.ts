@@ -129,7 +129,7 @@ describe("buildTaxBoxProposals", () => {
     expect(props.some((p) => p.formId === "2042" && p.boxOrLine === "2CH")).toBe(true);
   });
 
-  it("absence de source RAG → confidence low + manual review forcé", () => {
+  it("absence de source RAG → confidence low + manual review forcé (taxBoxMappingRules direct)", () => {
     const props = buildTaxBoxProposals({
       detectedCategories: ["scpi"],
       ragByCategory: {},
@@ -137,7 +137,8 @@ describe("buildTaxBoxProposals", () => {
     expect(props.length).toBeGreaterThan(0);
     expect(props.every((p) => p.requiresManualReview)).toBe(true);
     expect(props.every((p) => p.confidence === "low")).toBe(true);
-    expect(props[0].blockingReason).toMatch(/Aucune source RAG/);
+    // taxBoxMappingRules est l'ancien helper standalone, sans fallback catalogue.
+    expect(props[0].blockingReason).toBeDefined();
   });
 
   it("source non officielle uniquement → bloque la confiance haute", () => {

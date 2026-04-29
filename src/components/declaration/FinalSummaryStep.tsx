@@ -5,7 +5,7 @@ import { WarningCard } from "./WarningCard";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
 import { DeclarationGuidancePanel } from "./guidance/DeclarationGuidancePanel";
 import { formatEuro, TaxCategoryLabel } from "@/lib/declaration/utils/taxFormatting";
-import { Copy, Download, Save, ArrowLeft, FileCheck2 } from "lucide-react";
+import { Copy, Download, Loader2, Save, ArrowLeft, FileCheck2 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useDeclarationGuidance } from "@/hooks/useDeclarationGuidance";
+import { useDeclarationExports } from "@/hooks/useDeclarationExports";
 import type { FiscalAnalysis } from "@/lib/declaration/schemas/fiscalAnalysisSchema";
 import type { TaxCategory } from "@/lib/declaration/schemas/extractedDataSchema";
 import { toast } from "sonner";
@@ -37,8 +38,8 @@ export const FinalSummaryStep = ({
   declarationId,
   saveLabel = "Finaliser",
 }: Props) => {
-  // Lecture seule du statut guidance pour gérer le bouton PDF.
-  const { guidance, status: guidanceStatus } = useDeclarationGuidance(
+  const { guidance } = useDeclarationGuidance(declarationId ?? null);
+  const { generate, generating, getSignedUrl } = useDeclarationExports(
     declarationId ?? null,
   );
 
@@ -63,12 +64,40 @@ export const FinalSummaryStep = ({
     return acc;
   }, {});
 
-  const pdfDisabled = !guidance;
-  const pdfTooltip = !guidance
-    ? "Le PDF sera disponible après génération du guide déclaratif."
-    : guidanceStatus === "guidance_completed_with_warnings"
-      ? "PDF bientôt disponible — guide généré avec points à vérifier."
-      : "Export PDF — à venir";
+  const pdfDisabled = !guidance || !declarationId || generating;
+  const pdfTooltip = !declarationId
+    ? "Le PDF sera disponible une fois le dossier créé."
+    : !guidance
+      ? "Générez d'abord le guide déclaratif."
+      : "Générer un PDF reprenant la synthèse, le guide et les sources officielles.";
+
+  const handleGeneratePdf = async () => {
+    if (!declarationId || !guidance) return;
+    try {
+      const result = await generate({
+        includeAudit: false,
+        includeRagSources: true,
+        includeReviewItems: true,
+      });
+      toast.success("PDF généré", { description: result.fileName });
+      try {
+        const url = await getSignedUrl(result.storagePath);
+        window.open(url, "_blank");
+      } catch {
+        // ignore — l'utilisateur peut toujours le récupérer dans le panneau d'export
+      }
+    } catch (e) {
+      toast.error("Échec de la génération PDF", {
+        description: e instanceof Error ? e.message : "Erreur inconnue",
+      });
+    }
+  };
+
+  // Si le guide existe et propose des cases, on évite l'ancien message bloquant
+  // sur l'analyse fiscale et on affiche un résumé neutre.
+  const showLegacyAnalysisSection =
+    analysis.taxCases.length > 0 &&
+    !(guidance && guidance.taxBoxProposals.length > 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -90,11 +119,16 @@ export const FinalSummaryStep = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toast.info(pdfTooltip)}
+                    onClick={handleGeneratePdf}
                     disabled={pdfDisabled}
                     className="gap-2"
                   >
-                    <Download className="h-3.5 w-3.5" /> PDF
+                    {generating ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    PDF
                   </Button>
                 </span>
               </TooltipTrigger>
@@ -111,7 +145,11 @@ export const FinalSummaryStep = ({
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
           Résumé de la situation
         </h3>
-        <p className="text-foreground/90 leading-relaxed">{analysis.summary}</p>
+        <p className="text-foreground/90 leading-relaxed">
+          {guidance && guidance.taxBoxProposals.length > 0 && analysis.taxCases.length === 0
+            ? "Les documents transmis ont permis d'identifier des revenus à déclarer. Le guide ci-dessous détaille les formulaires, cases et points à vérifier."
+            : analysis.summary}
+        </p>
       </Card>
 
       {/* Guide déclaratif — bloc principal, dispo dès qu'on a un declarationId (draft) */}
@@ -148,13 +186,13 @@ export const FinalSummaryStep = ({
         </div>
       </Card>
 
-      {/* Analyse fiscale préliminaire — masquée si vide (le guide reste la source principale) */}
-      {analysis.taxCases.length > 0 && (
+      {/* Analyse fiscale préliminaire — affichée seulement si le guide n'a pas pris le relais */}
+      {showLegacyAnalysisSection && (
         <section className="space-y-6">
           <div>
             <h3 className="font-display text-xl font-semibold">Analyse fiscale préliminaire</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              Pistes issues de l'analyse RAG. Le guide ci-dessus reste la référence officielle.
+              Analyse préliminaire issue des documents transmis. Le guide ci-dessus reste la référence.
             </p>
           </div>
           {Object.entries(casesByCategory).map(([cat, cases]) => (

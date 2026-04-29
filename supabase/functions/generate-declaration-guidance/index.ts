@@ -6,6 +6,7 @@ import { ExtractedDataSchema } from "../_shared/contracts/extractionContracts.ts
 import { DeclarationGuidanceSchema, type FormSource } from "../_shared/guidance/guidanceSchemas.ts";
 import {
   buildDeclarationGuidance,
+  deriveEffectiveCategories,
   type CategoryRagPayload,
 } from "../_shared/guidance/guidanceBuilder.ts";
 
@@ -92,7 +93,8 @@ Deno.serve(async (req) => {
       );
     }
     const validatedData = validatedParse.data;
-    const detectedCategories = (validatedData.detectedCategories ?? []) as string[];
+    // Catégories effectives = union detectedCategories + champs réellement présents.
+    const detectedCategories = deriveEffectiveCategories(validatedData);
 
     // ── 3) Sources RAG par catégorie (chunks officiels uniquement, dédupliqués) ──
     const ragByCategory: Record<string, CategoryRagPayload> = {};

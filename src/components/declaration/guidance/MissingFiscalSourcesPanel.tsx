@@ -15,7 +15,7 @@ export const MissingFiscalSourcesPanel = ({ items }: Props) => {
       <div className="flex items-center gap-2 mb-2">
         <BookX className="h-4 w-4 text-warning" />
         <h4 className="font-display text-sm font-semibold">
-          Sources fiscales manquantes
+          Sources fiscales à confirmer
         </h4>
       </div>
       <ul className="space-y-3">

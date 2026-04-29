@@ -117,7 +117,7 @@ describe("DeclarationGuidancePanel", () => {
     hookState.status = "guidance_completed_with_warnings";
     render(<DeclarationGuidancePanel declarationId="abc" />);
     expect(screen.getByText(/Formulaires et annexes/i)).toBeInTheDocument();
-    expect(screen.getByText(/Formulaire 2042/i)).toBeInTheDocument();
+    expect(screen.getByText(/Déclaration principale 2042/i)).toBeInTheDocument();
   });
 
   it("la proposition 2DC affiche le montant et la source brochure (page)", () => {
@@ -164,7 +164,7 @@ describe("DeclarationGuidancePanel", () => {
       ],
     };
     render(<DeclarationGuidancePanel declarationId="abc" />);
-    expect(screen.getByText(/Sources fiscales manquantes/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sources fiscales à confirmer/i)).toBeInTheDocument();
     expect(screen.getByText(/Aucune source officielle ingérée/i)).toBeInTheDocument();
   });
 
