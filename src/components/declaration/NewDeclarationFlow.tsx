@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDeclarationFlow } from "@/hooks/useDeclarationFlow";
-import { usePersistDeclaration } from "@/hooks/useDeclarationPersistence";
+import { useDeclarationDraft } from "@/hooks/useDeclarationDraft";
+import { useFinalizeDeclaration } from "@/hooks/useDeclarationPersistence";
 import { useAuth } from "@/hooks/useAuth";
 import { FileUploadStep } from "./FileUploadStep";
 import { ExtractionReviewStep } from "./ExtractionReviewStep";
@@ -24,26 +26,33 @@ export const NewDeclarationFlow = () => {
   const { user } = useAuth();
   const flow = useDeclarationFlow();
   const { state } = flow;
-  const { save, saving } = usePersistDeclaration();
+  const { declarationId: draftId, loading: draftLoading } = useDeclarationDraft();
+  const { finalize, saving } = useFinalizeDeclaration();
+
+  // Synchronise le declarationId draft dans le state du flow
+  useEffect(() => {
+    if (draftId && state.declarationId !== draftId) {
+      flow.setDeclarationId(draftId);
+    }
+  }, [draftId, state.declarationId, flow]);
 
   const handleSave = async () => {
     if (!user) {
       toast.error("Session expirée");
       return;
     }
-    if (!state.extractedData || !state.validatedData || !state.analysis) {
+    if (!state.declarationId || !state.validatedData || !state.analysis) {
       toast.error("Données incomplètes");
       return;
     }
-    const id = await save({
-      userId: user.id,
-      extracted: state.extractedData,
+    const ok = await finalize({
+      declarationId: state.declarationId,
       validated: state.validatedData,
       analysis: state.analysis,
     });
-    if (id) {
+    if (ok) {
       toast.success("Analyse enregistrée");
-      navigate(`/declaration/${id}`);
+      navigate(`/declaration/${state.declarationId}`);
     } else {
       toast.error("Échec de l'enregistrement");
     }
