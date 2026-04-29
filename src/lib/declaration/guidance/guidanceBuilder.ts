@@ -531,12 +531,20 @@ export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidan
   // depuis les champs validated_data réellement remplis.
   const detected = deriveEffectiveCategories(d);
 
+  // Fallback catalogue brochure : si aucune source RAG DB, le catalogue local
+  // injecte les sources officielles brochure pour ne jamais laisser une case
+  // sans source identifiable.
+  const effectiveRagByCategory = mergeRagWithCatalogFallback(
+    input.ragByCategory,
+    detected,
+  );
+
   const { situations, hasForeignIncome, hasRealEstateIncome } = detectSituations(d);
 
   const requiredForms = buildRequiredForms({
     detectedCategories: detected,
     hasForeignIncome,
-    ragByCategory: input.ragByCategory,
+    ragByCategory: effectiveRagByCategory,
   });
 
   const { amountByBox, reviewHints } = mapValidatedAmountsToBoxes(d);
@@ -545,7 +553,7 @@ export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidan
     detectedCategories: detected,
     amountByBox,
     reviewHints,
-    ragByCategory: input.ragByCategory,
+    ragByCategory: effectiveRagByCategory,
   });
 
   const steps = buildDeclarationSteps({
@@ -556,7 +564,7 @@ export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidan
   const manualReviewItems = buildManualReviewItems(d);
   const missingSources = buildMissingSources({
     detectedCategories: detected,
-    ragByCategory: input.ragByCategory,
+    ragByCategory: effectiveRagByCategory,
   });
 
   // Confiance globale grossière
