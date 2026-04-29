@@ -263,10 +263,46 @@ Deno.serve(async (req) => {
       return jsonError(502, "Réponse IA non parsable", String(e));
     }
 
-    const validated = ExtractedDataSchema.safeParse(raw);
+    // --- Logs de debug propres (jamais le contenu doc) ---
+    console.log("[extract-tax-data] AI response received", {
+      declarationId,
+      numberOfFiles: files.length,
+      fileNames: files.map((f) => f.file_name),
+      modelUsed: MODEL_USED,
+      extractionPromptVersion: EXTRACTION_PROMPT_VERSION,
+      rawShape: shapeOf(raw),
+    });
+
+    // --- Normalisation défensive AVANT Zod ---
+    const normResult = normalizeAiExtractionResponse(raw);
+    if (normResult.changed) {
+      console.warn("[extract-tax-data] normalisation appliquée", {
+        declarationId,
+        warnings: normResult.warnings,
+      });
+    }
+
+    const validated = ExtractedDataSchema.safeParse(normResult.normalized);
     if (!validated.success) {
-      console.error("Zod validation failed", validated.error.flatten());
-      return jsonError(502, "Réponse IA non conforme au schéma", validated.error.flatten());
+      const zodErrors = validated.error.flatten();
+      console.error("[extract-tax-data] Zod validation failed", {
+        declarationId,
+        zodErrors,
+        normalizationWarnings: normResult.warnings,
+        normalizedShape: shapeOf(normResult.normalized),
+      });
+      return jsonError(
+        502,
+        "Réponse IA non conforme au schéma",
+        debug
+          ? {
+              zodErrors,
+              normalizationWarnings: normResult.warnings,
+              normalizedCandidate: normResult.normalized,
+              rawModelShape: shapeOf(raw),
+            }
+          : { zodErrors, normalizationWarnings: normResult.warnings },
+      );
     }
     const extracted: ExtractedData = validated.data;
 
