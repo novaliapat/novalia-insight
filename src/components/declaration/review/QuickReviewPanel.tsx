@@ -46,7 +46,7 @@ export function QuickReviewPanel({ declarationId }: Props) {
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card id="quick-review" className="overflow-hidden scroll-mt-24">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

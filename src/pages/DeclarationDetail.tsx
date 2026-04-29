@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Loader2, Eye } from "lucide-react";
+import { ChevronRight, Loader2, Eye, ListChecks } from "lucide-react";
 import { useLoadDeclaration } from "@/hooks/useDeclarationPersistence";
 import { FinalSummaryStep } from "@/components/declaration/FinalSummaryStep";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
@@ -79,6 +79,23 @@ const DeclarationDetail = () => {
               </div>
             </div>
           </Card>
+        )}
+
+        {!loading && data?.reviewStatus === "review_pending" && (
+          <div className="mb-6 flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                const el = document.getElementById("quick-review");
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
+              <ListChecks className="h-4 w-4" />
+              Aller à la revue rapide
+            </Button>
+          </div>
         )}
 
         {!loading && id && (
