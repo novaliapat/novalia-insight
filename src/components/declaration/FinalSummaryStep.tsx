@@ -112,8 +112,22 @@ export const FinalSummaryStep = ({
         <p className="text-foreground/90 leading-relaxed">{analysis.summary}</p>
       </Card>
 
-      {/* Guide déclaratif — bloc principal nouveau */}
-      <DeclarationGuidancePanel declarationId={declarationId ?? null} />
+      {/* Guide déclaratif — bloc principal */}
+      {isPersisted ? (
+        <DeclarationGuidancePanel declarationId={declarationId ?? null} />
+      ) : (
+        <Card className="p-5 bg-muted/30 border-l-4 border-l-accent">
+          <h3 className="font-display text-base font-semibold mb-1.5 flex items-center gap-2">
+            <FileCheck2 className="h-4 w-4 text-accent" />
+            Comment déclarer ces revenus ?
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Le guide déclaratif détaillé (formulaires, annexes, cases à cocher,
+            sources officielles) sera disponible automatiquement après{" "}
+            <strong className="text-foreground">enregistrement de l'analyse</strong>.
+          </p>
+        </Card>
+      )}
 
       {/* Vue par catégorie */}
       <Card className="p-5">
