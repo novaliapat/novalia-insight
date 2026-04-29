@@ -10,22 +10,23 @@ import type { FiscalAnalysis } from "@/lib/declaration/schemas/fiscalAnalysisSch
 interface Props {
   validatedData: ExtractedData;
   analysis: FiscalAnalysis | null;
+  declarationId: string | null;
   onAnalyzed: (analysis: FiscalAnalysis) => void;
   onPrev: () => void;
   onNext: () => void;
 }
 
-export const FiscalAnalysisStep = ({ validatedData, analysis, onAnalyzed, onPrev, onNext }: Props) => {
+export const FiscalAnalysisStep = ({ validatedData, analysis, declarationId, onAnalyzed, onPrev, onNext }: Props) => {
   const { status, analyze } = useFiscalAnalysis();
 
   useEffect(() => {
-    if (!analysis) {
-      analyze(validatedData).then((a) => {
+    if (!analysis && declarationId) {
+      analyze(validatedData, { declarationId }).then((a) => {
         if (a) onAnalyzed(a);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [declarationId]);
 
   if (!analysis || status === "loading") {
     return (

@@ -137,6 +137,8 @@ export type Database = {
           created_at: string
           declaration_id: string
           id: string
+          model_used: string | null
+          prompt_version: string | null
           updated_at: string
         }
         Insert: {
@@ -144,6 +146,8 @@ export type Database = {
           created_at?: string
           declaration_id: string
           id?: string
+          model_used?: string | null
+          prompt_version?: string | null
           updated_at?: string
         }
         Update: {
@@ -151,6 +155,8 @@ export type Database = {
           created_at?: string
           declaration_id?: string
           id?: string
+          model_used?: string | null
+          prompt_version?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -242,6 +248,7 @@ export type Database = {
       }
       declarations: {
         Row: {
+          analysis_status: string
           created_at: string
           id: string
           review_status: string
@@ -252,6 +259,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          analysis_status?: string
           created_at?: string
           id?: string
           review_status?: string
@@ -262,6 +270,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          analysis_status?: string
           created_at?: string
           id?: string
           review_status?: string
