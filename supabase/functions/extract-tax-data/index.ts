@@ -39,6 +39,61 @@ const RequestSchema = z.object({
 
 // ---------------- Tool schema (structured output IA) ----------------
 
+const CONFIDENT_NUMBER_SCHEMA = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    value: { type: "number" },
+    confidence: { type: "string", enum: ["high", "medium", "low"] },
+    sourceDocument: { type: "string" },
+    note: { type: "string" },
+  },
+  required: ["value", "confidence"],
+};
+
+const IFU_ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    institution: { type: "string" },
+    accountNumber: { type: "string" },
+    dividends: CONFIDENT_NUMBER_SCHEMA,
+    interests: CONFIDENT_NUMBER_SCHEMA,
+    capitalGains: CONFIDENT_NUMBER_SCHEMA,
+    withholdingTax: CONFIDENT_NUMBER_SCHEMA,
+    socialContributions: CONFIDENT_NUMBER_SCHEMA,
+  },
+  required: ["institution"],
+};
+
+const SCPI_ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    scpiName: { type: "string" },
+    managementCompany: { type: "string" },
+    frenchIncome: CONFIDENT_NUMBER_SCHEMA,
+    foreignIncome: CONFIDENT_NUMBER_SCHEMA,
+    deductibleInterests: CONFIDENT_NUMBER_SCHEMA,
+    socialContributions: CONFIDENT_NUMBER_SCHEMA,
+  },
+  required: ["scpiName"],
+};
+
+const LIFE_ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    contractName: { type: "string" },
+    insurer: { type: "string" },
+    contractAge: { type: "string", enum: ["less_than_8", "more_than_8"] },
+    withdrawals: CONFIDENT_NUMBER_SCHEMA,
+    taxableShare: CONFIDENT_NUMBER_SCHEMA,
+    withholdingTax: CONFIDENT_NUMBER_SCHEMA,
+  },
+  required: ["contractName"],
+};
+
 const TOOL_SCHEMA = {
   type: "function",
   function: {
@@ -69,9 +124,9 @@ const TOOL_SCHEMA = {
             ],
           },
         },
-        ifu: { type: "array", items: { type: "object" } },
-        scpi: { type: "array", items: { type: "object" } },
-        lifeInsurance: { type: "array", items: { type: "object" } },
+        ifu: { type: "array", items: IFU_ITEM_SCHEMA },
+        scpi: { type: "array", items: SCPI_ITEM_SCHEMA },
+        lifeInsurance: { type: "array", items: LIFE_ITEM_SCHEMA },
         warnings: { type: "array", items: { type: "string" } },
         missingData: { type: "array", items: { type: "string" } },
         globalConfidence: { type: "string", enum: ["high", "medium", "low"] },
