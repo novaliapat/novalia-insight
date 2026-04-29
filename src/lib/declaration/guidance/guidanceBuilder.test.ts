@@ -226,7 +226,43 @@ describe("buildDeclarationGuidance — invariants", () => {
         scpi: { category: "scpi", sources: [nonOfficialSrc], hasOfficial: false },
       },
     });
-    expect(out.guidance.taxBoxProposals.every((p) => p.confidence !== "high")).toBe(true);
+    // Avec le fallback catalogue, les cases brochure-sourcées peuvent rester "high".
+    // L'invariant est juste : aucune case sans source officielle ne doit être "high".
+    for (const p of out.guidance.taxBoxProposals) {
+      const hasOfficial = p.ragSources.some((s) => s.isOfficialSource);
+      if (!hasOfficial) {
+        expect(p.confidence).not.toBe("high");
+      }
+    }
+  });
+
+  it("fallback catalogue : sans RAG DB, IFU intérêts → 2TR avec source brochure officielle", () => {
+    const data = baseData({
+      detectedCategories: [],
+      ifu: [{ institution: "BNP", interests: { value: 115.73, confidence: "high" } }],
+      scpi: [
+        {
+          scpiName: "X",
+          foreignIncome: { value: 2320.85, confidence: "high" },
+          deductibleInterests: { value: 4003.49, confidence: "high" },
+        },
+      ],
+    });
+    const out = buildDeclarationGuidance({
+      taxYear: 2025,
+      validatedData: data,
+      ragByCategory: {}, // RAG DB vide
+    });
+    const tr = out.guidance.taxBoxProposals.find((p) => p.boxOrLine === "2TR");
+    expect(tr?.amount).toBeCloseTo(115.73);
+    expect(tr?.ragSources.some((s) => s.isOfficialSource)).toBe(true);
+
+    const l250 = out.guidance.taxBoxProposals.find((p) => p.boxOrLine === "Ligne 250");
+    expect(l250?.amount).toBeCloseTo(4003.49);
+    expect(l250?.ragSources.some((s) => s.isOfficialSource)).toBe(true);
+
+    const bl = out.guidance.taxBoxProposals.find((p) => p.boxOrLine === "4BL");
+    expect(bl?.requiresManualReview).toBe(true);
   });
 
   it("annexes (2044/2047) ouvertes avant 2042 dans les steps", () => {
