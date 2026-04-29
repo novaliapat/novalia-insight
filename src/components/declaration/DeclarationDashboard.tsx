@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useDeclarationHistory } from "@/hooks/useDeclarationHistory";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
+import { SeedRagButton } from "@/components/admin/SeedRagButton";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { formatDateFr } from "@/lib/declaration/utils/taxFormatting";
 import { ExtractionStatusBadge } from "./ExtractionStatusBadge";
@@ -176,6 +177,11 @@ export const DeclarationDashboard = () => {
             ))}
           </div>
         )}
+      </section>
+
+      <section>
+        <h2 className="font-display text-xl font-semibold mb-3">Administration</h2>
+        <SeedRagButton />
       </section>
 
       <LegalDisclaimer />
