@@ -40,6 +40,8 @@ export const ExtractionReviewStep = ({
   const {
     status,
     error,
+    errorCode,
+    retryable,
     data,
     metadata,
     audit: backendAudit,
@@ -116,16 +118,31 @@ export const ExtractionReviewStep = ({
   }
 
   if (status === "error" || !display) {
+    const isRetryable =
+      retryable ||
+      errorCode === "NO_TOOL_CALL" ||
+      errorCode === "PROVIDER_UNAVAILABLE" ||
+      errorCode === "NETWORK" ||
+      errorCode === "TIMEOUT";
     return (
       <Card className="p-8 animate-fade-in space-y-4">
         <ExtractionStatusBadge status="extraction_failed" />
-        <WarningCard title="Erreur d'extraction" message={error ?? "Une erreur est survenue."} />
+        <WarningCard
+          title="Erreur d'extraction"
+          message={error ?? "Une erreur est survenue."}
+        />
+        {errorCode && (
+          <p className="text-xs text-muted-foreground">
+            Code technique : <span className="font-mono">{errorCode}</span>
+          </p>
+        )}
         <div className="flex gap-2">
           <Button onClick={onPrev} variant="outline" className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Retour
           </Button>
           <Button onClick={handleRetry} className="gap-2">
-            <RotateCw className="h-4 w-4" /> Réessayer
+            <RotateCw className="h-4 w-4" />
+            {isRetryable ? "Relancer l'extraction" : "Réessayer"}
           </Button>
         </div>
       </Card>
