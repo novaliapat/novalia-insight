@@ -349,16 +349,222 @@ export async function buildTaxSummaryPdf(input: PdfBuildInput): Promise<Uint8Arr
   const manualReviewCount = taxCases.filter((c: any) => c?.requiresManualReview).length;
   const pendingReview = (input.reviewItems ?? []).filter((r: any) => r.status === "pending").length;
 
+  const g = input.guidance ?? null;
+  const requiredForms: any[] = g?.requiredForms ?? [];
+  const declarationSteps: any[] = g?.declarationSteps ?? [];
+  const taxBoxProposals: any[] = g?.taxBoxProposals ?? [];
+  const manualReviewItems: any[] = g?.manualReviewItems ?? [];
+  const missingSources: any[] = g?.missingSources ?? [];
+  const guidanceWarnings: string[] = g?.warnings ?? [];
+
   subTitle(ctx, "Indicateurs");
   drawTable(ctx, ["Indicateur", "Valeur"], [
     ["Catégories analysées", cats],
-    ["Cases fiscales proposées", String(taxCases.length)],
-    ["Cases à vérifier manuellement", String(manualReviewCount)],
+    ["Formulaires à ouvrir", String(requiredForms.length)],
+    ["Cases / lignes proposées (guide)", String(taxBoxProposals.length)],
+    ["Étapes du parcours déclaratif", String(declarationSteps.length)],
+    ["Points à vérifier manuellement (guide)", String(manualReviewItems.length)],
+    ["Cases d'analyse à vérifier", String(manualReviewCount)],
+    ["Confiance globale du guide", g?.confidence ?? "—"],
     ["Points de revue en attente", String(pendingReview)],
-    ["Statut extraction", input.declaration.status === "draft" ? "—" : sanitize(input.declaration.status)],
-    ["Statut revue", sanitize(input.declaration.review_status ?? "—")],
     ["Statut analyse", sanitize(input.declaration.analysis_status ?? "—")],
-  ], [220, PAGE.width - M.left - M.right - 220]);
+    ["Statut guide", sanitize(input.guidanceStatus ?? "—")],
+  ], [240, PAGE.width - M.left - M.right - 240]);
+
+  // ====== GUIDE DÉCLARATIF (si disponible) ======
+  if (g) {
+    // Section 1 — Formulaires à ouvrir
+    newPage(ctx);
+    sectionTitle(ctx, "Formulaires à ouvrir");
+    if (!requiredForms.length) {
+      drawText(ctx, "Aucun formulaire requis identifié par le guide.", { color: COLORS.muted });
+    } else {
+      for (const f of requiredForms) {
+        ensureSpace(ctx, 50);
+        drawText(ctx, `• ${sanitize(f.formId)} — ${sanitize(f.label ?? "")}`, { font: ctx.bold, size: 11 });
+        drawText(ctx, sanitize(f.reason ?? ""), { size: 9.5, indent: 12 });
+        const meta: string[] = [];
+        if (f.confidence) meta.push(`Confiance ${f.confidence}`);
+        if (f.status) meta.push(`Statut ${f.status}`);
+        if (f.required) meta.push("Requis");
+        if (meta.length) drawText(ctx, meta.join(" • "), { size: 8.5, indent: 12, color: COLORS.muted });
+        // sources officielles brochure
+        const officialSrcs = (f.sources ?? []).filter((s: any) => s?.isOfficialSource);
+        if (officialSrcs.length) {
+          for (const s of officialSrcs.slice(0, 3)) {
+            const parts: string[] = [];
+            if (s.sourceName ?? s.title) parts.push(s.sourceName ?? s.title);
+            if (s.pageNumber) parts.push(`p.${s.pageNumber}`);
+            if (s.formId) parts.push(`form ${s.formId}`);
+            drawText(ctx, `Source officielle : ${parts.join(" • ")}`, {
+              size: 8.5, indent: 12, color: COLORS.gold,
+            });
+          }
+        }
+        ctx.cursorY -= 6;
+      }
+    }
+
+    // Section 2 — Parcours déclaratif pas-à-pas
+    newPage(ctx);
+    sectionTitle(ctx, "Parcours déclaratif pas-à-pas");
+    if (!declarationSteps.length) {
+      drawText(ctx, "Aucune étape générée par le guide.", { color: COLORS.muted });
+    } else {
+      const sortedSteps = [...declarationSteps].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0),
+      );
+      for (const s of sortedSteps) {
+        ensureSpace(ctx, 50);
+        drawText(ctx, `${(s.order ?? 0) + 1}. ${sanitize(s.title ?? "")}`, {
+          font: ctx.bold, size: 10.5,
+        });
+        if (s.description) drawText(ctx, sanitize(s.description), { size: 9.5, indent: 14 });
+        const meta: string[] = [];
+        if (s.formId) meta.push(`Form. ${s.formId}`);
+        if (s.targetBox) meta.push(`Case ${s.targetBox}`);
+        if (s.targetLine) meta.push(`Ligne ${s.targetLine}`);
+        if (typeof s.amount === "number") meta.push(`Montant ${formatAmount(s.amount)}`);
+        if (meta.length) drawText(ctx, meta.join(" • "), { size: 8.5, indent: 14, color: COLORS.muted });
+        if (s.requiresManualReview) {
+          drawText(ctx, `/!\\ Revue manuelle requise${s.warning ? " — " + sanitize(s.warning) : ""}`, {
+            size: 9, indent: 14, color: COLORS.warning,
+          });
+        }
+        ctx.cursorY -= 4;
+      }
+    }
+
+    // Section 3 — Cases / lignes proposées
+    newPage(ctx);
+    sectionTitle(ctx, "Cases / lignes proposées");
+    if (!taxBoxProposals.length) {
+      drawText(ctx, "Aucune case fiscale proposée par le guide.", { color: COLORS.muted });
+    } else {
+      drawTable(ctx,
+        ["Form.", "Case/Ligne", "Catégorie", "Libellé", "Montant", "Conf.", "Statut"],
+        taxBoxProposals.map((p: any) => [
+          p.formId ?? "—",
+          p.boxOrLine ?? "—",
+          catLabel(p.category ?? "—"),
+          p.label ?? "—",
+          formatAmount(p.amount),
+          p.confidence ?? "—",
+          p.requiresManualReview ? "À vérifier" : (p.status ?? "—"),
+        ]),
+        [45, 65, 75, 145, 70, 40, 55],
+      );
+
+      subTitle(ctx, "Détails et explications");
+      for (const p of taxBoxProposals) {
+        ensureSpace(ctx, 36);
+        drawText(ctx, `• ${p.formId} ${p.boxOrLine} — ${sanitize(p.label ?? "")}`, {
+          font: ctx.bold, size: 9.5,
+        });
+        if (p.explanation) {
+          drawText(ctx, sanitize(p.explanation), { size: 9, indent: 12, color: COLORS.muted });
+        }
+        if (p.requiresManualReview && p.blockingReason) {
+          drawText(ctx, `/!\\ ${sanitize(p.blockingReason)}`, {
+            size: 9, indent: 12, color: COLORS.warning,
+          });
+        }
+        ctx.cursorY -= 2;
+      }
+    }
+
+    // Section 4 — Points à vérifier manuellement (guide)
+    if (manualReviewItems.length || missingSources.length || guidanceWarnings.length) {
+      newPage(ctx);
+      sectionTitle(ctx, "Points à vérifier manuellement");
+
+      if (guidanceWarnings.length) {
+        subTitle(ctx, "Avertissements du guide");
+        guidanceWarnings.forEach((w) =>
+          drawText(ctx, `• ${sanitize(w)}`, { size: 9.5, indent: 6, color: COLORS.warning }),
+        );
+      }
+
+      if (manualReviewItems.length) {
+        subTitle(ctx, "Éléments à vérifier");
+        for (const it of manualReviewItems) {
+          ensureSpace(ctx, 30);
+          const head: string[] = [catLabel(it.category ?? "—")];
+          if (it.relatedFormId) head.push(`Form. ${it.relatedFormId}`);
+          if (it.relatedBox) head.push(`Case ${it.relatedBox}`);
+          drawText(ctx, `• ${head.join(" • ")}`, { font: ctx.bold, size: 9.5 });
+          if (it.reason) drawText(ctx, `Raison : ${sanitize(it.reason)}`, { size: 9, indent: 12 });
+          if (it.suggestedAction) {
+            drawText(ctx, `Action : ${sanitize(it.suggestedAction)}`, {
+              size: 9, indent: 12, color: COLORS.muted,
+            });
+          }
+          ctx.cursorY -= 3;
+        }
+      }
+
+      if (missingSources.length) {
+        subTitle(ctx, "Sources fiscales manquantes");
+        for (const m of missingSources) {
+          ensureSpace(ctx, 24);
+          drawText(ctx, `• ${catLabel(m.category)} — ${sanitize(m.reason ?? "")}`, {
+            size: 9.5, indent: 6, color: COLORS.warning,
+          });
+        }
+      }
+    }
+
+    // Section 5 — Sources officielles utilisées (brochure)
+    const allBrochureSrcs: any[] = [];
+    const seenSrc = new Set<string>();
+    const collect = (s: any) => {
+      if (!s?.isOfficialSource) return;
+      const key = `${s.documentId ?? ""}|${s.sourceName ?? ""}|${s.pageNumber ?? ""}|${(s.boxCodes ?? []).join(",")}`;
+      if (seenSrc.has(key)) return;
+      seenSrc.add(key);
+      allBrochureSrcs.push(s);
+    };
+    for (const f of requiredForms) (f.sources ?? []).forEach(collect);
+    for (const p of taxBoxProposals) (p.ragSources ?? []).forEach(collect);
+    for (const s of declarationSteps) (s.ragSources ?? []).forEach(collect);
+
+    if (allBrochureSrcs.length) {
+      newPage(ctx);
+      sectionTitle(ctx, "Sources officielles utilisées (Brochure IR)");
+      for (const s of allBrochureSrcs) {
+        ensureSpace(ctx, 50);
+        drawText(ctx, `• ${sanitize(s.sourceName ?? s.title ?? "Source")}`, {
+          font: ctx.bold, size: 10,
+        });
+        const meta: string[] = [];
+        if (s.pageNumber) meta.push(`Page ${s.pageNumber}`);
+        if (s.formId) meta.push(`Formulaire ${s.formId}`);
+        if (s.sectionLabel) meta.push(s.sectionLabel);
+        if ((s.boxCodes ?? []).length) meta.push(`Cases : ${s.boxCodes.join(", ")}`);
+        if (meta.length) drawText(ctx, meta.join(" • "), { size: 8.5, indent: 12, color: COLORS.muted });
+        if (s.excerpt) drawText(ctx, `"${sanitize(s.excerpt)}"`, { size: 9, indent: 12 });
+        if (s.sourceUrl) drawText(ctx, sanitize(s.sourceUrl), { size: 8.5, indent: 12, color: COLORS.gold });
+        ctx.cursorY -= 4;
+      }
+    }
+  } else {
+    // Pas de guidance fournie
+    ctx.cursorY -= 6;
+    drawText(ctx, "Aucun guide déclaratif n'est associé à cette synthèse. Générez-le avant export pour une restitution complète.", {
+      color: COLORS.warning, size: 9.5,
+    });
+  }
+
+  if (g?.disclaimer) {
+    newPage(ctx);
+    sectionTitle(ctx, "Limites et avertissements");
+    drawText(ctx, sanitize(g.disclaimer), { size: 10, lineGap: 4 });
+    ctx.cursorY -= 8;
+    drawText(ctx,
+      "Ce document est une aide à la préparation et ne remplace pas la déclaration officielle ni un conseil fiscal personnalisé.",
+      { size: 10, lineGap: 4, color: COLORS.muted },
+    );
+  }
 
   // ===== PAGE 3 — Données validées =====
   newPage(ctx);
