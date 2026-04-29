@@ -40,7 +40,31 @@ export const NewDeclarationFlow = () => {
     }
   }, [draftId, state.declarationId, flow]);
 
-  const handleSave = async () => {
+  // -- Verrouillage progressif avant analyse / finalisation --------------
+  const meta = useDeclarationMeta(state.declarationId);
+  const blocking = useReviewBlockingState({
+    declarationId: state.declarationId,
+    reviewStatus: meta.reviewStatus,
+    extractionStatus: meta.extractionStatus,
+  });
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<null | "to_analysis" | "save">(null);
+
+  const tryProceedToAnalysis = () => {
+    const lvl = blocking.result.level;
+    if (lvl === "blocked") {
+      toast.error(blocking.result.title);
+      return;
+    }
+    if (lvl === "confirmation_required") {
+      setPendingAction("to_analysis");
+      setOverrideOpen(true);
+      return;
+    }
+    flow.next();
+  };
+
+  const doSave = async () => {
     if (!user) {
       toast.error("Session expirée");
       return;
@@ -59,6 +83,30 @@ export const NewDeclarationFlow = () => {
       navigate(`/declaration/${state.declarationId}`);
     } else {
       toast.error("Échec de l'enregistrement");
+    }
+  };
+
+  const handleSave = async () => {
+    const lvl = blocking.result.level;
+    if (lvl === "blocked") {
+      toast.error(blocking.result.title);
+      return;
+    }
+    if (lvl === "confirmation_required") {
+      setPendingAction("save");
+      setOverrideOpen(true);
+      return;
+    }
+    await doSave();
+  };
+
+  const handleOverrideConfirmed = async () => {
+    const action = pendingAction;
+    setPendingAction(null);
+    if (action === "to_analysis") {
+      flow.next();
+    } else if (action === "save") {
+      await doSave();
     }
   };
 
