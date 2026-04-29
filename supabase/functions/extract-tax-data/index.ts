@@ -7,88 +7,17 @@ import {
   EXTRACTION_PROMPT_VERSION,
 } from "./extractionPrompt.ts";
 import { runExtractionConsistencyChecks } from "./consistencyChecks.ts";
-import { deriveExtractionStatus, type ExtractionStatus } from "./extractionStatus.ts";
-import { countExtractedFields, type ExtractionAudit } from "./extractionAudit.ts";
+import { deriveExtractionStatus } from "./extractionStatus.ts";
+import { countExtractedFields } from "./extractionAudit.ts";
+import {
+  ExtractedDataSchema,
+  ExtractTaxDataResponseSchema,
+  type ExtractedData,
+  type ExtractionAudit,
+  type ExtractionStatus,
+} from "../_shared/contracts/extractionContracts.ts";
 
 const MODEL_USED = "google/gemini-2.5-pro";
-
-// ---------------- Schémas Zod (mirror du front) ----------------
-
-const ConfidenceLevelEnum = z.enum(["high", "medium", "low"]);
-
-const TaxCategoryEnum = z.enum([
-  "ifu",
-  "scpi",
-  "life_insurance",
-  "real_estate_income",
-  "dividends",
-  "interests",
-  "capital_gains",
-  "foreign_accounts",
-  "per",
-  "tax_credits",
-  "deductible_expenses",
-  "other",
-]);
-
-const ConfidentNumber = z.object({
-  value: z.number(),
-  confidence: ConfidenceLevelEnum,
-  sourceDocument: z.string().optional(),
-  note: z.string().optional(),
-});
-
-const TaxpayerSchema = z.object({
-  fullName: z.string().optional(),
-  fiscalNumber: z.string().optional(),
-  taxHousehold: z.string().optional(),
-  address: z.string().optional(),
-});
-
-const IFUEntrySchema = z.object({
-  institution: z.string(),
-  accountNumber: z.string().optional(),
-  dividends: ConfidentNumber.optional(),
-  interests: ConfidentNumber.optional(),
-  capitalGains: ConfidentNumber.optional(),
-  withholdingTax: ConfidentNumber.optional(),
-  socialContributions: ConfidentNumber.optional(),
-});
-
-const SCPIEntrySchema = z.object({
-  scpiName: z.string(),
-  managementCompany: z.string().optional(),
-  frenchIncome: ConfidentNumber.optional(),
-  foreignIncome: ConfidentNumber.optional(),
-  deductibleInterests: ConfidentNumber.optional(),
-  socialContributions: ConfidentNumber.optional(),
-});
-
-const LifeInsuranceEntrySchema = z.object({
-  contractName: z.string(),
-  insurer: z.string().optional(),
-  contractAge: z.enum(["less_than_8", "more_than_8"]).optional(),
-  withdrawals: ConfidentNumber.optional(),
-  taxableShare: ConfidentNumber.optional(),
-  withholdingTax: ConfidentNumber.optional(),
-});
-
-// ExtractedDataSchema = données fiscales pures (pas de métadonnées système).
-// Les métadonnées (version prompt, timestamp, modèle, dryRun) sont injectées
-// par l'edge function et exposées via le wrapper ExtractionResult.
-const ExtractedDataSchema = z.object({
-  taxpayer: TaxpayerSchema,
-  taxYear: z.number().int(),
-  detectedCategories: z.array(TaxCategoryEnum).default([]),
-  ifu: z.array(IFUEntrySchema).default([]),
-  scpi: z.array(SCPIEntrySchema).default([]),
-  lifeInsurance: z.array(LifeInsuranceEntrySchema).default([]),
-  warnings: z.array(z.string()).default([]),
-  missingData: z.array(z.string()).default([]),
-  globalConfidence: ConfidenceLevelEnum.default("medium"),
-}); // mode .strip() par défaut : champs inconnus (métadonnées hallucinées) silencieusement supprimés.
-
-type ExtractedData = z.infer<typeof ExtractedDataSchema>;
 
 // ---------------- Input ----------------
 
@@ -97,10 +26,7 @@ const RequestSchema = z.object({
   dryRun: z.boolean().optional().default(false),
 });
 
-// ---------------- Prompts ----------------
-// Voir extractionPrompt.ts (séparé pour pouvoir itérer indépendamment).
-
-// ---------------- Tool schema (structured output) ----------------
+// ---------------- Tool schema (structured output IA) ----------------
 
 const TOOL_SCHEMA = {
   type: "function",
@@ -138,8 +64,6 @@ const TOOL_SCHEMA = {
         warnings: { type: "array", items: { type: "string" } },
         missingData: { type: "array", items: { type: "string" } },
         globalConfidence: { type: "string", enum: ["high", "medium", "low"] },
-        // Pas de extractionPromptVersion / extractedAt / modelUsed ici :
-        // les métadonnées système sont injectées par l'edge function.
       },
       required: [
         "taxpayer", "taxYear", "detectedCategories",
@@ -204,7 +128,6 @@ Deno.serve(async (req) => {
     if (filesErr) return jsonError(500, "Lecture des fichiers échouée");
     if (!files || files.length === 0) return jsonError(400, "Aucun fichier à analyser");
 
-    // Marquer "extraction_pending" (sauf dry-run)
     if (!dryRun) {
       await admin
         .from("declarations")
@@ -227,7 +150,6 @@ Deno.serve(async (req) => {
       const buf = new Uint8Array(await blob.arrayBuffer());
       const b64 = base64Encode(buf);
       const mime = f.file_type || guessMime(f.file_name);
-      // Lovable AI / OpenAI-compatible : image_url accepte data URLs (images & pdf selon modèle)
       aiContent.push({
         type: "image_url",
         image_url: { url: `data:${mime};base64,${b64}` },
@@ -243,7 +165,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: MODEL_USED,
         messages: [
           { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
           { role: "user", content: aiContent },
@@ -280,10 +202,9 @@ Deno.serve(async (req) => {
       console.error("Zod validation failed", validated.error.flatten());
       return jsonError(502, "Réponse IA non conforme au schéma", validated.error.flatten());
     }
-    // Données fiscales pures (issues de l'IA, validées Zod, sans métadonnées système).
     const extracted: ExtractedData = validated.data;
 
-    // Métadonnées système : injectées EXCLUSIVEMENT par le serveur (source de vérité).
+    // Métadonnées système — injectées EXCLUSIVEMENT par le serveur.
     const extractedAt = new Date().toISOString();
     const metadata = {
       extractionPromptVersion: EXTRACTION_PROMPT_VERSION,
@@ -292,7 +213,7 @@ Deno.serve(async (req) => {
       dryRun,
     };
 
-    // --- Audit + statut officiels (calculés côté backend) ---
+    // --- Audit + statut officiels ---
     const consistencyIssues = runExtractionConsistencyChecks({
       taxYear: extracted.taxYear,
       detectedCategories: extracted.detectedCategories,
@@ -333,13 +254,20 @@ Deno.serve(async (req) => {
       missingData: extracted.missingData,
     };
 
+    // --- Validation du contrat de réponse AVANT envoi (filet de sécurité) ---
+    const responsePayload = { data: extracted, metadata, audit, status };
+    const responseValidated = ExtractTaxDataResponseSchema.safeParse(responsePayload);
+    if (!responseValidated.success) {
+      console.error("Response contract violation", responseValidated.error.flatten());
+      return jsonError(500, "Contrat de réponse invalide", responseValidated.error.flatten());
+    }
+
     // --- Mode dry-run : pas de persistance ---
     if (dryRun) {
       console.log("[extract-tax-data] dryRun=true → no DB write", { declarationId, status });
-      return new Response(
-        JSON.stringify({ data: extracted, metadata, audit, status }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify(responseValidated.data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // --- Persistance ---
@@ -372,7 +300,6 @@ Deno.serve(async (req) => {
       .update({ status: "extraction_done" })
       .eq("id", declarationId);
 
-    // Audit officiel persisté côté backend (source de vérité)
     await admin.from("declaration_audit_logs").insert({
       declaration_id: declarationId,
       user_id: userId,
@@ -380,12 +307,11 @@ Deno.serve(async (req) => {
       metadata: JSON.parse(JSON.stringify(audit)),
     });
 
-    return new Response(JSON.stringify({ data: extracted, metadata, audit, status }), {
+    return new Response(JSON.stringify(responseValidated.data), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("extract-tax-data error:", e);
-    // Best-effort : log d'échec si on a un declarationId connu
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
