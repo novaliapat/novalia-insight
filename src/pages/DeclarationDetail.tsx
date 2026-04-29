@@ -97,21 +97,31 @@ const DeclarationDetail = () => {
           </Card>
         )}
 
-        {!loading && data?.reviewStatus === "review_pending" && (
-          <div className="mb-6 flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => {
-                const el = document.getElementById("quick-review");
-                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-            >
-              <ListChecks className="h-4 w-4" />
-              Aller à la revue rapide
-            </Button>
-          </div>
+        {!loading && id && data && (
+          <Card className="p-5 mb-6">
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <div>
+                <h2 className="font-display text-base font-semibold text-foreground">
+                  État de validation
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  L'extraction et la revue sont tracées dans le journal d'audit.
+                </p>
+              </div>
+              {blocking.result.level === "confirmation_required" && (
+                <Button size="sm" onClick={() => setOverrideOpen(true)}>
+                  Confirmer et continuer
+                </Button>
+              )}
+            </div>
+            {blocking.result.level === "none" ? (
+              <div className="text-sm text-muted-foreground">
+                Aucun point de revue en attente. Vous pouvez finaliser sereinement.
+              </div>
+            ) : (
+              <ReviewBlockingBanner result={blocking.result} onGoToReview={goToReview} />
+            )}
+          </Card>
         )}
 
         {!loading && id && (
