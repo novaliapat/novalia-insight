@@ -87,8 +87,9 @@ export const FinalSummaryStep = ({
         // ignore — l'utilisateur peut toujours le récupérer dans le panneau d'export
       }
     } catch (e) {
+      console.error("[FinalSummaryStep] PDF generation failed:", e);
       toast.error("Échec de la génération PDF", {
-        description: e instanceof Error ? e.message : "Erreur inconnue",
+        description: e instanceof Error ? e.message : typeof e === "string" ? e : JSON.stringify(e),
       });
     }
   };

@@ -98,25 +98,37 @@ Deno.serve(async (req) => {
     }));
 
     const generatedAt = new Date();
-    const pdfBytes = await buildTaxSummaryPdf({
-      declaration: decl,
-      contribuable: profileRes.data?.display_name ?? profileRes.data?.email ?? null,
-      generatedAt,
-      extracted: extracted as any,
-      detectedCategories: (extracted as any)?.detected_categories ?? [],
-      validated: validated as any,
-      analysis: analysis?.analysis ?? null,
-      guidance: guidanceRow?.guidance ?? null,
-      guidanceStatus: guidanceRow?.status ?? null,
-      reviewItems: reviewRes.data ?? [],
-      auditLogs: auditRes.data ?? [],
-      ragSourcesUsed,
-      options: {
-        includeAudit: body.includeAudit,
-        includeRagSources: body.includeRagSources,
-        includeReviewItems: body.includeReviewItems,
-      },
-    });
+    let pdfBytes: Uint8Array;
+    try {
+      pdfBytes = await buildTaxSummaryPdf({
+        declaration: decl,
+        contribuable: profileRes.data?.display_name ?? profileRes.data?.email ?? null,
+        generatedAt,
+        extracted: extracted as any,
+        detectedCategories: (extracted as any)?.detected_categories ?? [],
+        validated: validated as any,
+        analysis: analysis?.analysis ?? null,
+        guidance: guidanceRow?.guidance ?? null,
+        guidanceStatus: guidanceRow?.status ?? null,
+        reviewItems: reviewRes.data ?? [],
+        auditLogs: auditRes.data ?? [],
+        ragSourcesUsed,
+        options: {
+          includeAudit: body.includeAudit,
+          includeRagSources: body.includeRagSources,
+          includeReviewItems: body.includeReviewItems,
+        },
+      });
+    } catch (buildErr) {
+      console.error("[generate-tax-summary-pdf] buildTaxSummaryPdf crashed:", buildErr);
+      await admin.from("declaration_audit_logs").insert({
+        declaration_id: decl.id,
+        user_id: user.id,
+        action: "tax_summary_pdf_failed",
+        metadata: { error: (buildErr as Error).message, stage: "pdf_build" },
+      });
+      return json(500, { error: `Erreur construction PDF : ${(buildErr as Error).message}` });
+    }
 
     const ts = generatedAt.toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const fileName = `synthese-fiscale-${decl.tax_year}-${ts}.pdf`;
