@@ -70,6 +70,9 @@ const LifeInsuranceEntrySchema = z.object({
   withholdingTax: ConfidentNumber.optional(),
 });
 
+// ExtractedDataSchema = données fiscales pures (pas de métadonnées système).
+// Les métadonnées (version prompt, timestamp, modèle, dryRun) sont injectées
+// par l'edge function et exposées via le wrapper ExtractionResult.
 const ExtractedDataSchema = z.object({
   taxpayer: TaxpayerSchema,
   taxYear: z.number().int(),
@@ -80,10 +83,7 @@ const ExtractedDataSchema = z.object({
   warnings: z.array(z.string()).default([]),
   missingData: z.array(z.string()).default([]),
   globalConfidence: ConfidenceLevelEnum.default("medium"),
-  extractionPromptVersion: z.string().optional(),
-  extractedAt: z.string().optional(),
-  modelUsed: z.string().optional(),
-});
+}).strict(); // refuse silencieusement tout champ inattendu (ex: métadonnées hallucinées)
 
 type ExtractedData = z.infer<typeof ExtractedDataSchema>;
 
