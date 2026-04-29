@@ -240,6 +240,11 @@ Deno.serve(async (req) => {
       missingData: extracted.missingData,
       consistencyIssues,
     });
+    const evidenceMetrics = countEvidenceMetrics({
+      ifu: extracted.ifu as unknown as Array<Record<string, unknown>>,
+      scpi: extracted.scpi as unknown as Array<Record<string, unknown>>,
+      lifeInsurance: extracted.lifeInsurance as unknown as Array<Record<string, unknown>>,
+    });
     const audit: ExtractionAudit = {
       declarationId,
       extractedAt,
@@ -258,6 +263,7 @@ Deno.serve(async (req) => {
       numberOfWarnings: extracted.warnings.length,
       numberOfMissingData: extracted.missingData.length,
       numberOfConsistencyIssues: consistencyIssues.length,
+      ...evidenceMetrics,
       consistencyIssues,
       warnings: extracted.warnings,
       missingData: extracted.missingData,
