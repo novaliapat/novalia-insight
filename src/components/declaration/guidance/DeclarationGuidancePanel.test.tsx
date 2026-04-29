@@ -124,9 +124,11 @@ describe("DeclarationGuidancePanel", () => {
     hookState.guidance = baseGuidance;
     render(<DeclarationGuidancePanel declarationId="abc" />);
     expect(screen.getAllByText(/2DC/).length).toBeGreaterThan(0);
-    // formatEuro utilise un narrow no-break space
+    // formatEuro: "1 500 €" avec espaces unicode (NBSP / NNBSP)
     expect(
-      screen.getByText((t) => /1\s?500,00/.test(t.replace(/\u202f/g, " "))),
+      screen.getByText((t) =>
+        /1\s?500/.test(t.replace(/[\u202f\u00a0]/g, " ")),
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getAllByText(/Brochure IR 2025.*p\.124/).length,
