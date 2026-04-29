@@ -202,11 +202,13 @@ Deno.serve(async (req) => {
     if (filesErr) return jsonError(500, "Lecture des fichiers échouée");
     if (!files || files.length === 0) return jsonError(400, "Aucun fichier à analyser");
 
-    // Marquer "extraction_pending"
-    await admin
-      .from("declarations")
-      .update({ status: "extraction_pending" })
-      .eq("id", declarationId);
+    // Marquer "extraction_pending" (sauf dry-run)
+    if (!dryRun) {
+      await admin
+        .from("declarations")
+        .update({ status: "extraction_pending" })
+        .eq("id", declarationId);
+    }
 
     // --- Téléchargement + base64 ---
     const aiContent: Array<Record<string, unknown>> = [
