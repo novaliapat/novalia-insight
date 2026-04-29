@@ -1,15 +1,9 @@
-// Statut d'extraction officiel — calculé côté backend.
-// Le front peut afficher mais ne doit pas redéfinir cette règle.
+// Statut d'extraction officiel — règle de dérivation calculée côté backend.
+// Le type vit dans le miroir partagé (_shared/contracts/extractionContracts.ts).
 
-import type { ConsistencyIssue } from "./consistencyChecks.ts";
+import type { ConsistencyIssue, ExtractionStatus } from "../_shared/contracts/extractionContracts.ts";
 
-export type ExtractionStatus =
-  | "extraction_not_started"
-  | "extraction_processing"
-  | "extraction_completed"
-  | "extraction_completed_with_warnings"
-  | "extraction_failed"
-  | "extraction_needs_review";
+export type { ExtractionStatus };
 
 export function deriveExtractionStatus(params: {
   hasError: boolean;
