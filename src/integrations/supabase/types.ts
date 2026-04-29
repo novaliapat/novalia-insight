@@ -300,6 +300,209 @@ export type Database = {
         }
         Relationships: []
       }
+      tax_rag_chunks: {
+        Row: {
+          category: Database["public"]["Enums"]["tax_category"]
+          chunk_index: number
+          content: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+          keywords: string[]
+          metadata: Json
+          summary: string | null
+          tax_year: number | null
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["tax_category"]
+          chunk_index: number
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          keywords?: string[]
+          metadata?: Json
+          summary?: string | null
+          tax_year?: number | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["tax_category"]
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          keywords?: string[]
+          metadata?: Json
+          summary?: string | null
+          tax_year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_rag_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rag_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_rag_documents: {
+        Row: {
+          category: Database["public"]["Enums"]["tax_category"]
+          created_at: string
+          document_date: string | null
+          id: string
+          is_official_source: boolean
+          metadata: Json
+          source_name: string | null
+          source_type: string
+          source_url: string | null
+          status: string
+          storage_path: string | null
+          tax_year: number | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["tax_category"]
+          created_at?: string
+          document_date?: string | null
+          id?: string
+          is_official_source?: boolean
+          metadata?: Json
+          source_name?: string | null
+          source_type: string
+          source_url?: string | null
+          status?: string
+          storage_path?: string | null
+          tax_year?: number | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["tax_category"]
+          created_at?: string
+          document_date?: string | null
+          id?: string
+          is_official_source?: boolean
+          metadata?: Json
+          source_name?: string | null
+          source_type?: string
+          source_url?: string | null
+          status?: string
+          storage_path?: string | null
+          tax_year?: number | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      tax_rag_queries: {
+        Row: {
+          category: Database["public"]["Enums"]["tax_category"]
+          created_at: string
+          declaration_id: string | null
+          id: string
+          query: string
+          retrieved_chunk_ids: string[]
+          top_score: number | null
+          user_id: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["tax_category"]
+          created_at?: string
+          declaration_id?: string | null
+          id?: string
+          query: string
+          retrieved_chunk_ids?: string[]
+          top_score?: number | null
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["tax_category"]
+          created_at?: string
+          declaration_id?: string | null
+          id?: string
+          query?: string
+          retrieved_chunk_ids?: string[]
+          top_score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_rag_queries_declaration_id_fkey"
+            columns: ["declaration_id"]
+            isOneToOne: false
+            referencedRelation: "declarations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_rag_sources_used: {
+        Row: {
+          analysis_id: string | null
+          category: Database["public"]["Enums"]["tax_category"]
+          chunk_id: string | null
+          created_at: string
+          declaration_id: string | null
+          document_id: string | null
+          id: string
+          relevance_score: number | null
+          used_in_answer: boolean
+        }
+        Insert: {
+          analysis_id?: string | null
+          category: Database["public"]["Enums"]["tax_category"]
+          chunk_id?: string | null
+          created_at?: string
+          declaration_id?: string | null
+          document_id?: string | null
+          id?: string
+          relevance_score?: number | null
+          used_in_answer?: boolean
+        }
+        Update: {
+          analysis_id?: string | null
+          category?: Database["public"]["Enums"]["tax_category"]
+          chunk_id?: string | null
+          created_at?: string
+          declaration_id?: string | null
+          document_id?: string | null
+          id?: string
+          relevance_score?: number | null
+          used_in_answer?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_rag_sources_used_chunk_id_fkey"
+            columns: ["chunk_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rag_chunks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_rag_sources_used_declaration_id_fkey"
+            columns: ["declaration_id"]
+            isOneToOne: false
+            referencedRelation: "declarations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_rag_sources_used_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rag_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -332,6 +535,29 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_tax_rag_chunks: {
+        Args: {
+          match_category: Database["public"]["Enums"]["tax_category"]
+          match_count?: number
+          match_tax_year?: number
+          query_embedding: string
+        }
+        Returns: {
+          category: Database["public"]["Enums"]["tax_category"]
+          chunk_id: string
+          content: string
+          document_date: string
+          document_id: string
+          is_official_source: boolean
+          keywords: string[]
+          similarity: number
+          source_name: string
+          source_url: string
+          summary: string
+          tax_year: number
+          title: string
+        }[]
       }
       owns_declaration: { Args: { _declaration_id: string }; Returns: boolean }
     }
