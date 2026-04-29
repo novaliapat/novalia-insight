@@ -3,8 +3,16 @@ import { Card } from "@/components/ui/card";
 import { TaxCaseCard } from "./TaxCaseCard";
 import { WarningCard } from "./WarningCard";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
+import { DeclarationGuidancePanel } from "./guidance/DeclarationGuidancePanel";
 import { formatEuro, TaxCategoryLabel } from "@/lib/declaration/utils/taxFormatting";
 import { Copy, Download, Save, ArrowLeft, FileCheck2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useDeclarationGuidance } from "@/hooks/useDeclarationGuidance";
 import type { FiscalAnalysis } from "@/lib/declaration/schemas/fiscalAnalysisSchema";
 import type { TaxCategory } from "@/lib/declaration/schemas/extractedDataSchema";
 import { toast } from "sonner";
@@ -14,9 +22,21 @@ interface Props {
   onPrev: () => void;
   onSave: () => void;
   saving?: boolean;
+  declarationId?: string | null;
 }
 
-export const FinalSummaryStep = ({ analysis, onPrev, onSave, saving = false }: Props) => {
+export const FinalSummaryStep = ({
+  analysis,
+  onPrev,
+  onSave,
+  saving = false,
+  declarationId,
+}: Props) => {
+  // Lecture seule du statut guidance pour gérer le bouton PDF.
+  const { guidance, status: guidanceStatus } = useDeclarationGuidance(
+    declarationId ?? null,
+  );
+
   const handleCopy = async () => {
     const text = [
       `Synthèse fiscale ${analysis.taxYear}`,
@@ -38,6 +58,13 @@ export const FinalSummaryStep = ({ analysis, onPrev, onSave, saving = false }: P
     return acc;
   }, {});
 
+  const pdfDisabled = !guidance;
+  const pdfTooltip = !guidance
+    ? "Le PDF sera disponible après génération du guide déclaratif."
+    : guidanceStatus === "guidance_completed_with_warnings"
+      ? "PDF bientôt disponible — guide généré avec points à vérifier."
+      : "Export PDF — à venir";
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -51,9 +78,24 @@ export const FinalSummaryStep = ({ analysis, onPrev, onSave, saving = false }: P
           <Button variant="outline" size="sm" onClick={handleCopy} className="gap-2">
             <Copy className="h-3.5 w-3.5" /> Copier
           </Button>
-          <Button variant="outline" size="sm" onClick={() => toast.info("Export PDF — à venir")} className="gap-2">
-            <Download className="h-3.5 w-3.5" /> PDF
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toast.info(pdfTooltip)}
+                    disabled={pdfDisabled}
+                    className="gap-2"
+                  >
+                    <Download className="h-3.5 w-3.5" /> PDF
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{pdfTooltip}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button size="sm" onClick={onSave} disabled={saving} className="gap-2">
             <Save className="h-3.5 w-3.5" /> {saving ? "Enregistrement…" : "Enregistrer"}
           </Button>
@@ -66,6 +108,9 @@ export const FinalSummaryStep = ({ analysis, onPrev, onSave, saving = false }: P
         </h3>
         <p className="text-foreground/90 leading-relaxed">{analysis.summary}</p>
       </Card>
+
+      {/* Guide déclaratif — bloc principal nouveau */}
+      <DeclarationGuidancePanel declarationId={declarationId ?? null} />
 
       {/* Vue par catégorie */}
       <Card className="p-5">

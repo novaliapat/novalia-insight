@@ -18,6 +18,7 @@ import { ReviewOverrideDialog } from "@/components/declaration/review/ReviewOver
 import { RagSearchPanel } from "@/components/rag/RagSearchPanel";
 import { ExportPanel } from "@/components/declaration/export/ExportPanel";
 import { useReviewBlockingState } from "@/hooks/useReviewBlockingState";
+import { useDeclarationGuidance } from "@/hooks/useDeclarationGuidance";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { ExtractionStatusEnum } from "@/lib/declaration/contracts/statusContract";
 import type { DeclarationReviewStatus } from "@/lib/declaration/review/computeReviewStatus";
@@ -26,6 +27,7 @@ const DeclarationDetail = () => {
   const { id } = useParams();
   const { load, loading, error, data } = useLoadDeclaration();
   const [overrideOpen, setOverrideOpen] = useState(false);
+  const guidance = useDeclarationGuidance(id ?? null);
 
   useEffect(() => {
     if (id) load(id);
@@ -159,6 +161,7 @@ const DeclarationDetail = () => {
               analysis={data.analysis}
               onPrev={() => history.back()}
               onSave={() => {}}
+              declarationId={id}
             />
             {id && data && (
               <div className="mt-6">
@@ -170,6 +173,8 @@ const DeclarationDetail = () => {
                   hasManualReviewCases={
                     (data.analysis?.taxCases ?? []).some((c: any) => c?.requiresManualReview)
                   }
+                  hasGuidance={!!guidance.guidance}
+                  guidanceStatus={guidance.status}
                 />
               </div>
             )}
