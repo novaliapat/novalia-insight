@@ -242,6 +242,9 @@ export const NewDeclarationFlow = () => {
               data={state.extractedData}
               onValidated={(d) => {
                 flow.setValidatedData(d);
+                if (state.declarationId) {
+                  void persistValidated(state.declarationId, d);
+                }
                 tryProceedToAnalysis();
               }}
               onPrev={flow.prev}
@@ -253,7 +256,14 @@ export const NewDeclarationFlow = () => {
             validatedData={state.validatedData}
             analysis={state.analysis}
             declarationId={state.declarationId}
-            onAnalyzed={flow.setAnalysis}
+            onAnalyzed={(a) => {
+              flow.setAnalysis(a);
+              if (state.declarationId) {
+                void persistAnalysis(state.declarationId, a).then(() =>
+                  triggerGuidanceGeneration(state.declarationId!),
+                );
+              }
+            }}
             onPrev={flow.prev}
             onNext={flow.next}
           />
@@ -269,6 +279,7 @@ export const NewDeclarationFlow = () => {
               onSave={handleSave}
               saving={saving || !blocking.result.canContinue}
               declarationId={state.declarationId}
+              saveLabel="Finaliser"
             />
           </div>
         )}
