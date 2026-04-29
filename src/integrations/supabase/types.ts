@@ -163,6 +163,54 @@ export type Database = {
           },
         ]
       }
+      declaration_review_items: {
+        Row: {
+          audit_log_id: string | null
+          created_at: string
+          declaration_id: string
+          dedup_key: string
+          field: string | null
+          id: string
+          message: string
+          note: string | null
+          severity: string
+          source_code: string | null
+          source_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          audit_log_id?: string | null
+          created_at?: string
+          declaration_id: string
+          dedup_key: string
+          field?: string | null
+          id?: string
+          message: string
+          note?: string | null
+          severity?: string
+          source_code?: string | null
+          source_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          audit_log_id?: string | null
+          created_at?: string
+          declaration_id?: string
+          dedup_key?: string
+          field?: string | null
+          id?: string
+          message?: string
+          note?: string | null
+          severity?: string
+          source_code?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       declaration_validated_data: {
         Row: {
           declaration_id: string
