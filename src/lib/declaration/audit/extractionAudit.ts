@@ -3,7 +3,17 @@ import type {
   ExtractionMetadata,
 } from "@/lib/declaration/schemas/extractedDataSchema";
 import type { ConsistencyIssue } from "@/lib/declaration/validation/extractionConsistencyChecks";
-import { supabase } from "@/integrations/supabase/client";
+import type { ExtractionStatus } from "@/lib/declaration/status/extractionStatus";
+
+/**
+ * SOURCE DE VÉRITÉ : l'audit officiel est généré et persisté par
+ * l'edge function `extract-tax-data`. Le front n'écrit plus jamais
+ * dans `declaration_audit_logs` pour `extraction_audit_generated`.
+ *
+ * Ce module reste utile pour :
+ *  - le typage de l'audit retourné par l'edge function
+ *  - un fallback de calcul UI si l'audit backend est absent (rétrocompat)
+ */
 
 export interface ExtractionAudit {
   declarationId: string;
@@ -13,6 +23,7 @@ export interface ExtractionAudit {
   dryRun: boolean;
   detectedCategories: string[];
   globalConfidence: "high" | "medium" | "low";
+  status: ExtractionStatus;
   numberOfFiles: number;
   numberOfExtractedFields: number;
   numberOfWarnings: number;
@@ -23,24 +34,16 @@ export interface ExtractionAudit {
   missingData: string[];
 }
 
-interface ConfidentField {
-  value: number;
-  confidence: string;
-}
+interface ConfidentField { value: number; confidence: string; }
 
 function isConfidentField(v: unknown): v is ConfidentField {
-  return (
-    typeof v === "object" &&
-    v !== null &&
-    "value" in v &&
-    typeof (v as Record<string, unknown>).value === "number"
-  );
+  return typeof v === "object" && v !== null && "value" in v &&
+    typeof (v as Record<string, unknown>).value === "number";
 }
 
-function countExtractedFields(data: ExtractedData): number {
+export function countExtractedFields(data: ExtractedData): number {
   let n = 0;
-  const buckets: Array<unknown[]> = [data.ifu, data.scpi, data.lifeInsurance];
-  for (const arr of buckets) {
+  for (const arr of [data.ifu, data.scpi, data.lifeInsurance]) {
     for (const entry of arr) {
       if (entry && typeof entry === "object") {
         for (const v of Object.values(entry as Record<string, unknown>)) {
@@ -52,14 +55,19 @@ function countExtractedFields(data: ExtractedData): number {
   return n;
 }
 
-export function buildExtractionAudit(params: {
+/**
+ * Fallback uniquement : utilisé si l'edge function n'a pas renvoyé d'audit
+ * (cas legacy / extraction historique). Ne sert PAS de source de vérité.
+ */
+export function buildExtractionAuditFallback(params: {
   declarationId: string;
   data: ExtractedData;
   metadata: ExtractionMetadata;
   numberOfFiles: number;
   consistencyIssues: ConsistencyIssue[];
+  status: ExtractionStatus;
 }): ExtractionAudit {
-  const { declarationId, data, metadata, numberOfFiles, consistencyIssues } = params;
+  const { declarationId, data, metadata, numberOfFiles, consistencyIssues, status } = params;
   return {
     declarationId,
     extractedAt: metadata.extractedAt,
@@ -68,6 +76,7 @@ export function buildExtractionAudit(params: {
     dryRun: metadata.dryRun,
     detectedCategories: data.detectedCategories,
     globalConfidence: data.globalConfidence,
+    status,
     numberOfFiles,
     numberOfExtractedFields: countExtractedFields(data),
     numberOfWarnings: data.warnings.length,
@@ -77,26 +86,4 @@ export function buildExtractionAudit(params: {
     warnings: data.warnings,
     missingData: data.missingData,
   };
-}
-
-/**
- * Sauvegarde l'audit côté backend (declaration_audit_logs).
- * Best-effort : n'interrompt pas le flow si échec.
- */
-export async function persistExtractionAudit(audit: ExtractionAudit): Promise<void> {
-  try {
-    const { error } = await supabase.from("declaration_audit_logs").insert([
-      {
-        declaration_id: audit.declarationId,
-        action: "extraction_audit_generated",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        metadata: JSON.parse(JSON.stringify(audit)) as any,
-      },
-    ]);
-    if (error) {
-      console.warn("[extractionAudit] persist failed", error.message);
-    }
-  } catch (e) {
-    console.warn("[extractionAudit] persist threw", e);
-  }
 }
