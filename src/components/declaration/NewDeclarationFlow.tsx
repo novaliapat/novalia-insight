@@ -187,6 +187,7 @@ export const NewDeclarationFlow = () => {
           <FiscalAnalysisStep
             validatedData={state.validatedData}
             analysis={state.analysis}
+            declarationId={state.declarationId}
             onAnalyzed={flow.setAnalysis}
             onPrev={flow.prev}
             onNext={flow.next}
