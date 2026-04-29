@@ -301,6 +301,23 @@ export async function buildTaxSummaryPdf(input: PdfBuildInput): Promise<Uint8Arr
   ctx.page.drawText(`Date de génération : ${input.generatedAt.toLocaleDateString("fr-FR")}`, {
     x: M.left, y: ctx.cursorY, size: 11, font: ctx.font, color: COLORS.muted,
   });
+  ctx.cursorY -= 18;
+
+  // Statut du guide
+  const guidanceStatusLabel = (() => {
+    switch (input.guidanceStatus) {
+      case "guidance_completed": return "Guide déclaratif : complet";
+      case "guidance_completed_with_warnings": return "Guide déclaratif : avec points à vérifier";
+      case "guidance_failed": return "Guide déclaratif : échec";
+      default: return input.guidance ? "Guide déclaratif : disponible" : "Guide déclaratif : non généré";
+    }
+  })();
+  const guidanceColor = input.guidanceStatus === "guidance_completed_with_warnings"
+    ? COLORS.warning
+    : input.guidance ? COLORS.success : COLORS.muted;
+  ctx.page.drawText(sanitize(guidanceStatusLabel), {
+    x: M.left, y: ctx.cursorY, size: 11, font: ctx.bold, color: guidanceColor,
+  });
 
   // Disclaimer (bottom of cover)
   ctx.cursorY = M.bottom + 120;
@@ -308,7 +325,7 @@ export async function buildTaxSummaryPdf(input: PdfBuildInput): Promise<Uint8Arr
     x: M.left, y: ctx.cursorY - 70, width: PAGE.width - M.left - M.right,
     height: 80, color: rgb(0.97, 0.95, 0.88), borderColor: COLORS.gold, borderWidth: 0.5,
   });
-  const disclaimer = "Ce document est une aide à la préparation de la déclaration fiscale. Les informations et cases proposées doivent être vérifiées avant toute déclaration officielle. En cas de doute, rapprochez-vous de l'administration fiscale ou de votre conseil habituel.";
+  const disclaimer = "Ce document est une aide à la préparation et ne remplace pas la déclaration officielle ni un conseil fiscal personnalisé. Les cases proposées doivent être vérifiées avant toute télédéclaration.";
   const dLines = wrap(disclaimer, ctx.italic, 9, PAGE.width - M.left - M.right - 20);
   let dy = ctx.cursorY - 14;
   for (const line of dLines) {
