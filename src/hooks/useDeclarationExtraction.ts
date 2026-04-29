@@ -25,14 +25,20 @@ export function useDeclarationExtraction() {
 
   const extract = async (
     declarationId: string,
-    options?: { dryRun?: boolean },
+    options?: { dryRun?: boolean; debug?: boolean },
   ): Promise<ExtractedData | null> => {
     setStatus("loading");
     setError(null);
     try {
       const { data: resp, error: invokeErr } = await supabase.functions.invoke(
         "extract-tax-data",
-        { body: { declarationId, dryRun: options?.dryRun ?? false } },
+        {
+          body: {
+            declarationId,
+            dryRun: options?.dryRun ?? false,
+            debug: options?.debug ?? false,
+          },
+        },
       );
       if (invokeErr) {
         let msg = invokeErr.message;
@@ -40,7 +46,16 @@ export function useDeclarationExtraction() {
           const ctx = (invokeErr as unknown as { context?: Response }).context;
           if (ctx) {
             const body = await ctx.clone().json();
-            if (body?.error) msg = body.error;
+            if (body?.error) {
+              msg = body.error;
+              if (body.details) {
+                console.error("[useDeclarationExtraction] details:", body.details);
+                if (typeof body.details === "object" && body.details !== null) {
+                  const d = body.details as Record<string, unknown>;
+                  if (d.zodErrors) msg += ` — ${JSON.stringify(d.zodErrors)}`;
+                }
+              }
+            }
           }
         } catch {
           // ignore
