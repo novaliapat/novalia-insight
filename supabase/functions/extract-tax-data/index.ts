@@ -70,6 +70,9 @@ const LifeInsuranceEntrySchema = z.object({
   withholdingTax: ConfidentNumber.optional(),
 });
 
+// ExtractedDataSchema = données fiscales pures (pas de métadonnées système).
+// Les métadonnées (version prompt, timestamp, modèle, dryRun) sont injectées
+// par l'edge function et exposées via le wrapper ExtractionResult.
 const ExtractedDataSchema = z.object({
   taxpayer: TaxpayerSchema,
   taxYear: z.number().int(),
@@ -80,10 +83,7 @@ const ExtractedDataSchema = z.object({
   warnings: z.array(z.string()).default([]),
   missingData: z.array(z.string()).default([]),
   globalConfidence: ConfidenceLevelEnum.default("medium"),
-  extractionPromptVersion: z.string().optional(),
-  extractedAt: z.string().optional(),
-  modelUsed: z.string().optional(),
-});
+}); // mode .strip() par défaut : champs inconnus (métadonnées hallucinées) silencieusement supprimés.
 
 type ExtractedData = z.infer<typeof ExtractedDataSchema>;
 
@@ -135,9 +135,8 @@ const TOOL_SCHEMA = {
         warnings: { type: "array", items: { type: "string" } },
         missingData: { type: "array", items: { type: "string" } },
         globalConfidence: { type: "string", enum: ["high", "medium", "low"] },
-        extractionPromptVersion: { type: "string" },
-        extractedAt: { type: "string", description: "ISO 8601 UTC timestamp" },
-        modelUsed: { type: "string" },
+        // Pas de extractionPromptVersion / extractedAt / modelUsed ici :
+        // les métadonnées système sont injectées par l'edge function.
       },
       required: [
         "taxpayer", "taxYear", "detectedCategories",
@@ -278,19 +277,22 @@ Deno.serve(async (req) => {
       console.error("Zod validation failed", validated.error.flatten());
       return jsonError(502, "Réponse IA non conforme au schéma", validated.error.flatten());
     }
-    // Forcer/écraser les champs de traçabilité côté serveur (source de vérité).
-    const extracted: ExtractedData = {
-      ...validated.data,
+    // Données fiscales pures (issues de l'IA, validées Zod, sans métadonnées système).
+    const extracted: ExtractedData = validated.data;
+
+    // Métadonnées système : injectées EXCLUSIVEMENT par le serveur (source de vérité).
+    const metadata = {
       extractionPromptVersion: EXTRACTION_PROMPT_VERSION,
       extractedAt: new Date().toISOString(),
       modelUsed: MODEL_USED,
+      dryRun,
     };
 
     // --- Mode dry-run : pas de persistance ---
     if (dryRun) {
       console.log("[extract-tax-data] dryRun=true → no DB write", { declarationId });
       return new Response(
-        JSON.stringify({ ...extracted, dryRun: true }),
+        JSON.stringify({ data: extracted, metadata }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -307,6 +309,7 @@ Deno.serve(async (req) => {
       extracted_data: extracted as unknown as Record<string, unknown>,
       detected_categories: extracted.detectedCategories,
       confidence_score: confidenceScore,
+      metadata: metadata as unknown as Record<string, unknown>,
     });
     if (insErr) {
       console.error("insert extracted_data failed", insErr);
@@ -331,7 +334,7 @@ Deno.serve(async (req) => {
       },
     });
 
-    return new Response(JSON.stringify(extracted), {
+    return new Response(JSON.stringify({ data: extracted, metadata }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

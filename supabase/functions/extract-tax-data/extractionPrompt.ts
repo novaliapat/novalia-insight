@@ -77,13 +77,8 @@ DONNÉES MANQUANTES :
 - Donnée absente d'un document attendu -> entrée dans "missingData" décrivant ce qui manque.
 - Ne mets PAS de champ inventé pour combler.
 
-CHAMPS DE TRAÇABILITÉ :
-- Tu DOIS renseigner :
-  - extractionPromptVersion = "${EXTRACTION_PROMPT_VERSION}"
-  - extractedAt = timestamp ISO 8601 UTC du moment de l'extraction (ex: "2026-04-29T10:00:00Z")
-  - modelUsed = identifiant du modèle si tu le connais, sinon omets le champ.
-
-L'étape d'analyse fiscale viendra PLUS TARD, par un autre composant. Tu ne dois rien anticiper de cette étape.`;
+L'étape d'analyse fiscale viendra PLUS TARD, par un autre composant. Tu ne dois rien anticiper de cette étape.
+Les métadonnées système (version du prompt, horodatage, modèle) sont ajoutées par le serveur — NE LES INCLUS PAS dans ta réponse.`;
 
 export const EXTRACTION_USER_PROMPT = `Analyse les documents fiscaux ci-joints et extrais UNIQUEMENT les données visibles.
 
@@ -117,5 +112,5 @@ Rappels critiques :
 - Donnée incertaine -> confidence:"low" + entrée dans warnings.
 - Contradictions entre fichiers -> NE PAS trancher, entrée dans warnings.
 - Chaque montant DOIT avoir sourceDocument (nom de fichier exact).
-- Renseigne extractionPromptVersion, extractedAt (ISO 8601 UTC), et modelUsed si possible.
-- Réponds uniquement en appelant l'outil "submit_extraction".`;
+- Réponds uniquement en appelant l'outil "submit_extraction".
+- N'inclus PAS extractionPromptVersion, extractedAt ni modelUsed (ajoutés par le serveur).`;
