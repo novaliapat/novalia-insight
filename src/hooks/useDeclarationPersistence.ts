@@ -15,6 +15,7 @@ export interface SavedDeclaration {
   extracted: ExtractedData | null;
   validated: ExtractedData | null;
   analysis: FiscalAnalysis | null;
+  extractionStatus: string | null;
 }
 
 /**
@@ -103,6 +104,7 @@ export function useLoadDeclaration() {
         extracted: (ex.data?.extracted_data ?? null) as ExtractedData | null,
         validated: (va.data?.validated_data ?? null) as ExtractedData | null,
         analysis: (an.data?.analysis ?? null) as FiscalAnalysis | null,
+        extractionStatus: (ex.data?.extraction_status ?? null) as string | null,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur de chargement");
