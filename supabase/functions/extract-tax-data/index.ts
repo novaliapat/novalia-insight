@@ -6,6 +6,9 @@ import {
   EXTRACTION_USER_PROMPT,
   EXTRACTION_PROMPT_VERSION,
 } from "./extractionPrompt.ts";
+import { runExtractionConsistencyChecks } from "./consistencyChecks.ts";
+import { deriveExtractionStatus, type ExtractionStatus } from "./extractionStatus.ts";
+import { countExtractedFields, type ExtractionAudit } from "./extractionAudit.ts";
 
 const MODEL_USED = "google/gemini-2.5-pro";
 
@@ -281,18 +284,60 @@ Deno.serve(async (req) => {
     const extracted: ExtractedData = validated.data;
 
     // Métadonnées système : injectées EXCLUSIVEMENT par le serveur (source de vérité).
+    const extractedAt = new Date().toISOString();
     const metadata = {
       extractionPromptVersion: EXTRACTION_PROMPT_VERSION,
-      extractedAt: new Date().toISOString(),
+      extractedAt,
       modelUsed: MODEL_USED,
       dryRun,
     };
 
+    // --- Audit + statut officiels (calculés côté backend) ---
+    const consistencyIssues = runExtractionConsistencyChecks({
+      taxYear: extracted.taxYear,
+      detectedCategories: extracted.detectedCategories,
+      ifu: extracted.ifu as unknown as Array<Record<string, unknown>>,
+      scpi: extracted.scpi as unknown as Array<Record<string, unknown>>,
+      lifeInsurance: extracted.lifeInsurance as unknown as Array<Record<string, unknown>>,
+      warnings: extracted.warnings,
+      missingData: extracted.missingData,
+      globalConfidence: extracted.globalConfidence,
+    });
+    const status: ExtractionStatus = deriveExtractionStatus({
+      hasError: false,
+      globalConfidence: extracted.globalConfidence,
+      warnings: extracted.warnings,
+      missingData: extracted.missingData,
+      consistencyIssues,
+    });
+    const audit: ExtractionAudit = {
+      declarationId,
+      extractedAt,
+      extractionPromptVersion: EXTRACTION_PROMPT_VERSION,
+      modelUsed: MODEL_USED,
+      dryRun,
+      detectedCategories: extracted.detectedCategories,
+      globalConfidence: extracted.globalConfidence,
+      status,
+      numberOfFiles: files.length,
+      numberOfExtractedFields: countExtractedFields({
+        ifu: extracted.ifu as unknown as Array<Record<string, unknown>>,
+        scpi: extracted.scpi as unknown as Array<Record<string, unknown>>,
+        lifeInsurance: extracted.lifeInsurance as unknown as Array<Record<string, unknown>>,
+      }),
+      numberOfWarnings: extracted.warnings.length,
+      numberOfMissingData: extracted.missingData.length,
+      numberOfConsistencyIssues: consistencyIssues.length,
+      consistencyIssues,
+      warnings: extracted.warnings,
+      missingData: extracted.missingData,
+    };
+
     // --- Mode dry-run : pas de persistance ---
     if (dryRun) {
-      console.log("[extract-tax-data] dryRun=true → no DB write", { declarationId });
+      console.log("[extract-tax-data] dryRun=true → no DB write", { declarationId, status });
       return new Response(
-        JSON.stringify({ data: extracted, metadata }),
+        JSON.stringify({ data: extracted, metadata, audit, status }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -302,7 +347,6 @@ Deno.serve(async (req) => {
       extracted.globalConfidence === "high" ? 0.9 :
       extracted.globalConfidence === "medium" ? 0.6 : 0.3;
 
-    // upsert manuel : delete + insert (pas de contrainte unique)
     await admin.from("declaration_extracted_data").delete().eq("declaration_id", declarationId);
     const { error: insErr } = await admin.from("declaration_extracted_data").insert({
       declaration_id: declarationId,
@@ -310,9 +354,16 @@ Deno.serve(async (req) => {
       detected_categories: extracted.detectedCategories,
       confidence_score: confidenceScore,
       metadata: metadata as unknown as Record<string, unknown>,
+      extraction_status: status,
     });
     if (insErr) {
       console.error("insert extracted_data failed", insErr);
+      await admin.from("declaration_audit_logs").insert({
+        declaration_id: declarationId,
+        user_id: userId,
+        action: "extraction_failed",
+        metadata: { stage: "persist_extracted_data", error: insErr.message },
+      });
       return jsonError(500, "Persistance des données extraites échouée");
     }
 
@@ -321,24 +372,36 @@ Deno.serve(async (req) => {
       .update({ status: "extraction_done" })
       .eq("id", declarationId);
 
+    // Audit officiel persisté côté backend (source de vérité)
     await admin.from("declaration_audit_logs").insert({
       declaration_id: declarationId,
       user_id: userId,
-      action: "extraction_completed",
-      metadata: {
-        files_count: files.length,
-        confidence: extracted.globalConfidence,
-        detected_categories: extracted.detectedCategories,
-        prompt_version: EXTRACTION_PROMPT_VERSION,
-        model_used: MODEL_USED,
-      },
+      action: "extraction_audit_generated",
+      metadata: JSON.parse(JSON.stringify(audit)),
     });
 
-    return new Response(JSON.stringify({ data: extracted, metadata }), {
+    return new Response(JSON.stringify({ data: extracted, metadata, audit, status }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("extract-tax-data error:", e);
+    // Best-effort : log d'échec si on a un declarationId connu
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      const body = await req.clone().json().catch(() => null);
+      const declId = body?.declarationId;
+      if (supabaseUrl && supabaseServiceKey && typeof declId === "string") {
+        const admin = createClient(supabaseUrl, supabaseServiceKey);
+        await admin.from("declaration_audit_logs").insert({
+          declaration_id: declId,
+          action: "extraction_failed",
+          metadata: { stage: "handler", error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+    } catch (logErr) {
+      console.warn("failed to log extraction_failed", logErr);
+    }
     return jsonError(500, e instanceof Error ? e.message : "Erreur inconnue");
   }
 });

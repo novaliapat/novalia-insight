@@ -13,10 +13,7 @@ import { AuditJsonViewer } from "./AuditJsonViewer";
 import { useDeclarationExtraction } from "@/hooks/useDeclarationExtraction";
 import { TaxCategoryLabel } from "@/lib/declaration/utils/taxFormatting";
 import { runExtractionConsistencyChecks } from "@/lib/declaration/validation/extractionConsistencyChecks";
-import {
-  buildExtractionAudit,
-  persistExtractionAudit,
-} from "@/lib/declaration/audit/extractionAudit";
+import { buildExtractionAuditFallback } from "@/lib/declaration/audit/extractionAudit";
 import {
   deriveExtractionStatus,
   summarizeMetadata,
@@ -39,7 +36,16 @@ export const ExtractionReviewStep = ({
   onPrev,
   onNext,
 }: Props) => {
-  const { status, error, data, metadata, extract, reset } = useDeclarationExtraction();
+  const {
+    status,
+    error,
+    data,
+    metadata,
+    audit: backendAudit,
+    extractionStatus: backendStatus,
+    extract,
+    reset,
+  } = useDeclarationExtraction();
 
   useEffect(() => {
     if (!extractedData && declarationId && status === "idle") {
@@ -52,36 +58,40 @@ export const ExtractionReviewStep = ({
 
   const display = extractedData ?? data;
 
-  const issues = useMemo(
-    () => (display ? runExtractionConsistencyChecks(display) : []),
-    [display],
-  );
+  // Issues affichées : on utilise celles de l'audit backend si dispo,
+  // sinon on recalcule (rétrocompat / cas où on revient sur l'étape).
+  const issues = useMemo(() => {
+    if (backendAudit?.consistencyIssues) return backendAudit.consistencyIssues;
+    return display ? runExtractionConsistencyChecks(display) : [];
+  }, [backendAudit, display]);
 
-  const detailedStatus = deriveExtractionStatus({
-    hasError: status === "error",
-    isProcessing: status === "loading",
-    data: display,
-    issues,
-  });
+  // Statut affiché : source de vérité = backend.
+  const detailedStatus = useMemo(() => {
+    if (status === "loading") return "extraction_processing" as const;
+    if (status === "error") return "extraction_failed" as const;
+    if (backendStatus) return backendStatus;
+    if (!display) return "extraction_not_started" as const;
+    return deriveExtractionStatus({
+      hasError: false,
+      isProcessing: false,
+      data: display,
+      issues,
+    });
+  }, [status, backendStatus, display, issues]);
 
+  // Audit affiché : backend en priorité, fallback côté front sinon.
   const audit = useMemo(() => {
+    if (backendAudit) return backendAudit;
     if (!display || !metadata || !declarationId) return null;
-    return buildExtractionAudit({
+    return buildExtractionAuditFallback({
       declarationId,
       data: display,
       metadata,
-      numberOfFiles: 0, // count exact non disponible côté front
+      numberOfFiles: 0,
       consistencyIssues: issues,
+      status: detailedStatus,
     });
-  }, [display, metadata, declarationId, issues]);
-
-  // Persiste un audit log côté backend dès que l'extraction est terminée (one-shot)
-  useEffect(() => {
-    if (audit && status === "success") {
-      void persistExtractionAudit(audit);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audit?.extractedAt, status]);
+  }, [backendAudit, display, metadata, declarationId, issues, detailedStatus]);
 
   const handleRetry = () => {
     if (!declarationId) return;
@@ -136,6 +146,7 @@ export const ExtractionReviewStep = ({
           </h2>
           <p className="text-muted-foreground text-sm">
             Année fiscale {display.taxYear} · {display.detectedCategories.length} catégorie(s) détectée(s)
+            {audit ? ` · ${audit.numberOfFiles} fichier(s)` : ""}
           </p>
           {metadata && (
             <p className="text-xs text-muted-foreground font-mono">{summarizeMetadata(metadata)}</p>
