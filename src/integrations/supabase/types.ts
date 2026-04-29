@@ -49,6 +49,56 @@ export type Database = {
           },
         ]
       }
+      declaration_exports: {
+        Row: {
+          created_at: string
+          declaration_id: string
+          export_type: string
+          file_name: string
+          id: string
+          include_audit: boolean
+          include_rag_sources: boolean
+          include_review_items: boolean
+          metadata: Json
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          declaration_id: string
+          export_type?: string
+          file_name: string
+          id?: string
+          include_audit?: boolean
+          include_rag_sources?: boolean
+          include_review_items?: boolean
+          metadata?: Json
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          declaration_id?: string
+          export_type?: string
+          file_name?: string
+          id?: string
+          include_audit?: boolean
+          include_rag_sources?: boolean
+          include_review_items?: boolean
+          metadata?: Json
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "declaration_exports_declaration_id_fkey"
+            columns: ["declaration_id"]
+            isOneToOne: false
+            referencedRelation: "declarations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       declaration_extracted_data: {
         Row: {
           confidence_score: number | null

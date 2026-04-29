@@ -16,6 +16,7 @@ import { PendingReviewBanner } from "@/components/declaration/review/PendingRevi
 import { ReviewBlockingBanner } from "@/components/declaration/review/ReviewBlockingBanner";
 import { ReviewOverrideDialog } from "@/components/declaration/review/ReviewOverrideDialog";
 import { RagSearchPanel } from "@/components/rag/RagSearchPanel";
+import { ExportPanel } from "@/components/declaration/export/ExportPanel";
 import { useReviewBlockingState } from "@/hooks/useReviewBlockingState";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { ExtractionStatusEnum } from "@/lib/declaration/contracts/statusContract";
@@ -159,6 +160,19 @@ const DeclarationDetail = () => {
               onPrev={() => history.back()}
               onSave={() => {}}
             />
+            {id && data && (
+              <div className="mt-6">
+                <ExportPanel
+                  declarationId={id}
+                  hasAnalysis={!!data.analysis}
+                  analysisStatus={(data.declaration as any).analysis_status}
+                  reviewStatus={data.reviewStatus}
+                  hasManualReviewCases={
+                    (data.analysis?.taxCases ?? []).some((c: any) => c?.requiresManualReview)
+                  }
+                />
+              </div>
+            )}
             <div className="mt-8">
               <LegalDisclaimer />
             </div>
