@@ -159,6 +159,7 @@ const DeclarationDetail = () => {
               analysis={data.analysis}
               onPrev={() => history.back()}
               onSave={() => {}}
+              declarationId={id}
             />
             {id && data && (
               <div className="mt-6">
