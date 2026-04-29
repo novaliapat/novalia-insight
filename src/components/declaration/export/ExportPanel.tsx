@@ -13,6 +13,8 @@ interface Props {
   analysisStatus?: string | null;
   reviewStatus?: string | null;
   hasManualReviewCases?: boolean;
+  hasGuidance?: boolean;
+  guidanceStatus?: string | null;
 }
 
 export const ExportPanel = ({
@@ -21,6 +23,8 @@ export const ExportPanel = ({
   analysisStatus,
   reviewStatus,
   hasManualReviewCases,
+  hasGuidance = false,
+  guidanceStatus,
 }: Props) => {
   const { toast } = useToast();
   const { exports, loading, generating, generate, getSignedUrl, remove } =
@@ -34,8 +38,10 @@ export const ExportPanel = ({
 
   const analysisFailed = analysisStatus === "analysis_failed";
   const reviewPending = reviewStatus === "review_pending";
-  const showWarning = reviewPending || hasManualReviewCases;
-  const blockGeneration = !hasAnalysis || analysisFailed;
+  const guidanceWithWarnings =
+    guidanceStatus === "guidance_completed_with_warnings";
+  const showWarning = reviewPending || hasManualReviewCases || guidanceWithWarnings;
+  const blockGeneration = !hasAnalysis || analysisFailed || !hasGuidance;
 
   const handleGenerate = async () => {
     try {
