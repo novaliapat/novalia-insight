@@ -77,6 +77,12 @@ const DeclarationDetail = () => {
           </Card>
         )}
 
+        {!loading && id && (
+          <div className="mb-6">
+            <ExtractionAuditPanel declarationId={id} />
+          </div>
+        )}
+
         {!loading && (error || !data?.analysis) && (
           <Card className="p-10 text-center">
             <h2 className="font-display text-2xl font-semibold mb-2">Analyse introuvable</h2>
