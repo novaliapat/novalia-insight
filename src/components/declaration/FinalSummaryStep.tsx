@@ -4,6 +4,7 @@ import { TaxCaseCard } from "./TaxCaseCard";
 import { WarningCard } from "./WarningCard";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
 import { DeclarationGuidancePanel } from "./guidance/DeclarationGuidancePanel";
+import { ExportPanel } from "./export/ExportPanel";
 import { formatEuro, TaxCategoryLabel } from "@/lib/declaration/utils/taxFormatting";
 import { Copy, Download, Loader2, Save, ArrowLeft, FileCheck2 } from "lucide-react";
 import {
@@ -38,7 +39,7 @@ export const FinalSummaryStep = ({
   declarationId,
   saveLabel = "Finaliser",
 }: Props) => {
-  const { guidance } = useDeclarationGuidance(declarationId ?? null);
+  const { guidance, status: guidanceStatus } = useDeclarationGuidance(declarationId ?? null);
   const { generate, generating, getSignedUrl } = useDeclarationExports(
     declarationId ?? null,
   );
@@ -255,6 +256,18 @@ export const FinalSummaryStep = ({
           </h3>
           <p className="text-sm text-muted-foreground italic">{analysis.limitations}</p>
         </Card>
+      )}
+
+      {declarationId && (
+        <ExportPanel
+          declarationId={declarationId}
+          hasAnalysis={!!analysis}
+          analysisStatus={null}
+          reviewStatus={null}
+          hasManualReviewCases={analysis.taxCases.some((c) => c.requiresManualReview)}
+          hasGuidance={!!guidance}
+          guidanceStatus={guidanceStatus}
+        />
       )}
 
       <LegalDisclaimer />
