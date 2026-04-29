@@ -203,6 +203,7 @@ export const NewDeclarationFlow = () => {
               onPrev={flow.prev}
               onSave={handleSave}
               saving={saving || !blocking.result.canContinue}
+              declarationId={state.declarationId}
             />
           </div>
         )}
