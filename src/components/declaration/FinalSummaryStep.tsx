@@ -170,23 +170,62 @@ export const FinalSummaryStep = ({
       )}
 
       {/* Vue par catégorie */}
-      <Card className="p-5">
-        <h3 className="font-display text-lg font-semibold mb-4">Revenus et montants identifiés</h3>
-        <div className="space-y-2">
-          {analysis.amountsByCategory.map((c) => (
-            <div
-              key={c.category}
-              className="flex items-center justify-between border-b border-border/50 pb-2 last:border-0"
-            >
-              <div>
-                <div className="font-medium text-sm">{TaxCategoryLabel[c.category]}</div>
-                <div className="text-xs text-muted-foreground">{c.caseCount} case(s) fiscale(s)</div>
-              </div>
-              <div className="font-display text-lg text-primary">{formatEuro(c.totalAmount)}</div>
+      {(() => {
+        // Fallback : si l'analyse n'a pas de montants mais le guide en a
+        const usingFallback = analysis.amountsByCategory.length === 0;
+        const displayCategories = !usingFallback
+          ? analysis.amountsByCategory
+          : (() => {
+              if (!guidance?.taxBoxProposals.length) return [];
+              const byCat: Record<string, { total: number; count: number }> = {};
+              for (const p of guidance.taxBoxProposals) {
+                const cat = p.category ?? "other";
+                if (!byCat[cat]) byCat[cat] = { total: 0, count: 0 };
+                if (typeof p.amount === "number") byCat[cat].total += p.amount;
+                byCat[cat].count += 1;
+              }
+              return Object.entries(byCat).map(([category, { total, count }]) => ({
+                category: category as TaxCategory,
+                totalAmount: total,
+                caseCount: count,
+              }));
+            })();
+
+        if (displayCategories.length === 0) return null;
+
+        return (
+          <Card className="p-5">
+            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+              <h3 className="font-display text-lg font-semibold">Revenus et montants identifiés</h3>
+              {usingFallback && guidance && (
+                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/30">
+                  Source : guide déclaratif
+                </span>
+              )}
             </div>
-          ))}
-        </div>
-      </Card>
+            <div className="space-y-2">
+              {displayCategories.map((c) => (
+                <div
+                  key={c.category}
+                  className="flex items-center justify-between border-b border-border/50 pb-2 last:border-0"
+                >
+                  <div>
+                    <div className="font-medium text-sm">
+                      {TaxCategoryLabel[c.category as TaxCategory] ?? c.category}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {c.caseCount} case(s) fiscale(s)
+                    </div>
+                  </div>
+                  <div className="font-display text-lg text-primary">
+                    {formatEuro(c.totalAmount)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Analyse fiscale préliminaire — affichée seulement si le guide n'a pas pris le relais */}
       {showLegacyAnalysisSection && (
