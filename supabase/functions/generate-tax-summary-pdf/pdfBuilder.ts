@@ -25,6 +25,8 @@ export interface PdfBuildInput {
   detectedCategories?: string[];
   validated?: Record<string, unknown> | null;
   analysis?: any | null;
+  guidance?: any | null;
+  guidanceStatus?: string | null;
   reviewItems?: any[];
   auditLogs?: any[];
   ragSourcesUsed?: any[];
