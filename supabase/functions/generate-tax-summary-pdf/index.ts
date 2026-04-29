@@ -59,10 +59,11 @@ Deno.serve(async (req) => {
     if (decl.user_id !== user.id) return json(403, { error: "Accès refusé" });
 
     // Charger les données associées
-    const [extractedRes, validatedRes, analysisRes, reviewRes, auditRes, sourcesRes, profileRes] = await Promise.all([
+    const [extractedRes, validatedRes, analysisRes, guidanceRes, reviewRes, auditRes, sourcesRes, profileRes] = await Promise.all([
       admin.from("declaration_extracted_data").select("*").eq("declaration_id", body.declarationId).maybeSingle(),
       admin.from("declaration_validated_data").select("*").eq("declaration_id", body.declarationId).maybeSingle(),
       admin.from("declaration_fiscal_analysis").select("*").eq("declaration_id", body.declarationId).maybeSingle(),
+      admin.from("declaration_guidance").select("guidance, status").eq("declaration_id", body.declarationId).maybeSingle(),
       body.includeReviewItems
         ? admin.from("declaration_review_items").select("*").eq("declaration_id", body.declarationId).order("created_at", { ascending: true })
         : Promise.resolve({ data: [], error: null }),
@@ -78,9 +79,13 @@ Deno.serve(async (req) => {
     const extracted = extractedRes.data;
     const validated = validatedRes.data;
     const analysis = analysisRes.data;
+    const guidanceRow = guidanceRes.data;
 
     if (!analysis) {
       return json(409, { error: "Analyse fiscale manquante. Lancez l'analyse avant d'exporter." });
+    }
+    if (!guidanceRow?.guidance) {
+      return json(409, { error: "Guide déclaratif manquant. Générez le guide avant d'exporter." });
     }
 
     const ragSourcesUsed = (sourcesRes.data ?? []).map((r: any) => ({
@@ -101,6 +106,8 @@ Deno.serve(async (req) => {
       detectedCategories: (extracted as any)?.detected_categories ?? [],
       validated: validated as any,
       analysis: analysis?.analysis ?? null,
+      guidance: guidanceRow?.guidance ?? null,
+      guidanceStatus: guidanceRow?.status ?? null,
       reviewItems: reviewRes.data ?? [],
       auditLogs: auditRes.data ?? [],
       ragSourcesUsed,

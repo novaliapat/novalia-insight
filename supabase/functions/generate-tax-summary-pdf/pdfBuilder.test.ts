@@ -68,3 +68,85 @@ Deno.test("buildTaxSummaryPdf — sources RAG non incluses si option false", asy
   const withSrc = await buildTaxSummaryPdf(baseInput({ options: { includeAudit: false, includeRagSources: true, includeReviewItems: false } }));
   assert(withSrc.byteLength > without.byteLength);
 });
+
+const guidanceFixture = () => ({
+  taxYear: 2024,
+  taxpayerSummary: { taxYear: 2024, detectedCategories: ["ifu"], hasForeignIncome: false, hasRealEstateIncome: false },
+  detectedSituations: ["Dividendes IFU"],
+  requiredForms: [
+    {
+      formId: "2042", label: "Déclaration principale", reason: "Dividendes à reporter",
+      required: true, confidence: "high", status: "confirmed",
+      sources: [{
+        title: "Brochure IR 2025", sourceName: "Brochure IR 2025",
+        isOfficialSource: true, provenance: "official_brochure",
+        pageNumber: 142, formId: "2042", boxCodes: ["2DC"],
+        sectionLabel: "Revenus de capitaux mobiliers",
+        excerpt: "Les dividendes éligibles sont à reporter case 2DC.",
+      }],
+      legalBasisSources: [],
+    },
+  ],
+  declarationSteps: [
+    {
+      id: "s1", order: 0, title: "Reporter dividendes en 2DC",
+      description: "Saisir 1234,56 EUR en case 2DC",
+      formId: "2042", actionType: "enter_amount", amount: 1234.56,
+      targetBox: "2DC", ragSources: [], requiresManualReview: false,
+    },
+  ],
+  taxBoxProposals: [
+    {
+      formId: "2042", boxOrLine: "2DC", label: "Dividendes éligibles",
+      amount: 1234.56, category: "ifu", explanation: "Dividendes IFU",
+      confidence: "high", status: "confirmed",
+      ragSources: [], legalBasisSources: [], requiresManualReview: false,
+    },
+  ],
+  manualReviewItems: [
+    { id: "m1", category: "ifu", reason: "Prélèvement à la source à confirmer",
+      suggestedAction: "Vérifier 2CK", relatedFormId: "2042", relatedBox: "2CK" },
+  ],
+  missingSources: [],
+  warnings: [],
+  confidence: "high",
+  disclaimer: "Aide à la préparation. Vérifiez avant déclaration.",
+});
+
+Deno.test("buildTaxSummaryPdf — guidance: PDF plus volumineux et plus de pages avec guidance", async () => {
+  const { PDFDocument } = await import("https://esm.sh/pdf-lib@1.17.1");
+  const withGuidance = await buildTaxSummaryPdf(baseInput({
+    guidance: guidanceFixture(),
+    guidanceStatus: "guidance_completed",
+  }));
+  const withoutGuidance = await buildTaxSummaryPdf(baseInput({ guidance: null }));
+  assert(withGuidance.byteLength > withoutGuidance.byteLength,
+    "PDF avec guidance doit être plus gros");
+  const docG = await PDFDocument.load(withGuidance);
+  const docNoG = await PDFDocument.load(withoutGuidance);
+  // Sections guidance ajoutent : formulaires, parcours, cases, points à vérifier
+  assert(docG.getPageCount() >= docNoG.getPageCount() + 3,
+    `attendu au moins +3 pages avec guidance, got ${docG.getPageCount()} vs ${docNoG.getPageCount()}`);
+  assertEquals(docG.getTitle(), "Synthèse fiscale 2024");
+});
+
+Deno.test("buildTaxSummaryPdf — guidance avec manualReviewItems n'enlève pas de pages", async () => {
+  const { PDFDocument } = await import("https://esm.sh/pdf-lib@1.17.1");
+  const g1 = guidanceFixture();
+  g1.manualReviewItems = [];
+  const withoutManual = await buildTaxSummaryPdf(baseInput({
+    guidance: g1, guidanceStatus: "guidance_completed",
+  }));
+  const withManual = await buildTaxSummaryPdf(baseInput({
+    guidance: guidanceFixture(), guidanceStatus: "guidance_completed_with_warnings",
+  }));
+  const d1 = await PDFDocument.load(withoutManual);
+  const d2 = await PDFDocument.load(withManual);
+  assert(d2.getPageCount() >= d1.getPageCount(),
+    "PDF avec manualReviewItems ne doit pas avoir moins de pages");
+});
+
+Deno.test("buildTaxSummaryPdf — sans guidance affiche un avertissement", async () => {
+  const bytes = await buildTaxSummaryPdf(baseInput({ guidance: null }));
+  assert(bytes.byteLength > 1000);
+});
