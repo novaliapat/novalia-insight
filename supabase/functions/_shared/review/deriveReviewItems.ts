@@ -7,7 +7,8 @@ export type ReviewItemSourceType =
   | "consistency_issue"
   | "warning"
   | "missing_data"
-  | "weak_evidence";
+  | "weak_evidence"
+  | "normalization_warning";
 export type ReviewItemSeverity = "info" | "warning" | "error";
 
 export interface DerivedReviewItem {
