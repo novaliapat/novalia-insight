@@ -1,25 +1,8 @@
-// Construction de l'audit officiel — côté edge function.
-import type { ConsistencyIssue } from "./consistencyChecks.ts";
-import type { ExtractionStatus } from "./extractionStatus.ts";
+// Helpers de comptage utilisés pour construire l'audit côté edge.
+// Le type ExtractionAudit / ConsistencyIssue vit dans le miroir partagé.
 
-export interface ExtractionAudit {
-  declarationId: string;
-  extractedAt: string;
-  extractionPromptVersion: string;
-  modelUsed?: string;
-  dryRun: boolean;
-  detectedCategories: string[];
-  globalConfidence: "high" | "medium" | "low";
-  status: ExtractionStatus;
-  numberOfFiles: number;
-  numberOfExtractedFields: number;
-  numberOfWarnings: number;
-  numberOfMissingData: number;
-  numberOfConsistencyIssues: number;
-  consistencyIssues: ConsistencyIssue[];
-  warnings: string[];
-  missingData: string[];
-}
+import type { ExtractionAudit } from "../_shared/contracts/extractionContracts.ts";
+export type { ExtractionAudit };
 
 interface ConfidentField { value: number; confidence: string; }
 

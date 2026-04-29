@@ -1,15 +1,8 @@
-// Checks de cohérence déterministes — version Deno (edge function).
-// Miroir fidèle de src/lib/declaration/validation/extractionConsistencyChecks.ts
-// Conservé séparément car les edge functions ne peuvent pas importer depuis src/.
+// Checks de cohérence déterministes (Deno).
+// Le type ConsistencyIssue vit dans _shared/contracts/extractionContracts.ts.
 
-export type ConsistencyIssueSeverity = "info" | "warning" | "error";
-
-export interface ConsistencyIssue {
-  code: string;
-  severity: ConsistencyIssueSeverity;
-  message: string;
-  field?: string;
-}
+import type { ConsistencyIssue } from "../_shared/contracts/extractionContracts.ts";
+export type { ConsistencyIssue };
 
 interface ConfidentField {
   value: number;

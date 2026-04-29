@@ -1,13 +1,21 @@
-import type { ExtractedData, ExtractionMetadata } from "@/lib/declaration/schemas/extractedDataSchema";
-import type { ConsistencyIssue } from "@/lib/declaration/validation/extractionConsistencyChecks";
+// Statut d'extraction — la définition canonique vit dans
+// `@/lib/declaration/contracts/statusContract`. Ce fichier ajoute
+// uniquement les helpers d'affichage (label/tone) et un dérivateur
+// utilisé en fallback UI quand le backend n'a pas renvoyé de statut.
+//
+// /!\ La règle officielle de dérivation vit côté edge function
+// (supabase/functions/extract-tax-data/extractionStatus.ts).
 
-export type ExtractionStatus =
-  | "extraction_not_started"
-  | "extraction_processing"
-  | "extraction_completed"
-  | "extraction_completed_with_warnings"
-  | "extraction_failed"
-  | "extraction_needs_review";
+import {
+  ExtractionStatusEnum,
+  type ExtractionStatus,
+} from "@/lib/declaration/contracts/statusContract";
+import type { ExtractedData } from "@/lib/declaration/contracts/extractedDataContract";
+import type { ExtractionMetadata } from "@/lib/declaration/contracts/extractionResultContract";
+import type { ConsistencyIssue } from "@/lib/declaration/contracts/auditContract";
+
+export { ExtractionStatusEnum };
+export type { ExtractionStatus };
 
 export const ExtractionStatusLabel: Record<ExtractionStatus, string> = {
   extraction_not_started: "Extraction non démarrée",
@@ -29,12 +37,7 @@ export const ExtractionStatusTone: Record<ExtractionStatus, ExtractionStatusTone
   extraction_needs_review: "warning",
 };
 
-/**
- * Dérive le statut détaillé à partir des données extraites + alertes.
- * - confidence low → needs_review (priorité)
- * - warnings/missingData/issues → completed_with_warnings
- * - sinon → completed
- */
+/** Fallback UI uniquement — ne pas utiliser si `backendStatus` existe. */
 export function deriveExtractionStatus(params: {
   hasError: boolean;
   isProcessing: boolean;

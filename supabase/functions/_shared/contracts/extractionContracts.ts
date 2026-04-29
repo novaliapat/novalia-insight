@@ -1,0 +1,156 @@
+// MIROIR Deno du contrat front (`src/lib/declaration/contracts/extractedDataContract.ts`).
+// /!\ Toute modification ici DOIT être répercutée côté front et vérifiée par
+// le test de parité (supabase/functions/_shared/contracts/parity_test.ts).
+
+import { z } from "https://esm.sh/zod@3.23.8";
+
+export const TaxCategoryEnum = z.enum([
+  "ifu",
+  "scpi",
+  "life_insurance",
+  "real_estate_income",
+  "dividends",
+  "interests",
+  "capital_gains",
+  "foreign_accounts",
+  "per",
+  "tax_credits",
+  "deductible_expenses",
+  "other",
+]);
+export type TaxCategory = z.infer<typeof TaxCategoryEnum>;
+
+export const ConfidenceLevelEnum = z.enum(["high", "medium", "low"]);
+export type ConfidenceLevel = z.infer<typeof ConfidenceLevelEnum>;
+
+export const TaxpayerSchema = z.object({
+  fullName: z.string().optional(),
+  fiscalNumber: z.string().optional(),
+  taxHousehold: z.string().optional(),
+  address: z.string().optional(),
+});
+
+export const ConfidentNumberSchema = z.object({
+  value: z.number(),
+  confidence: ConfidenceLevelEnum,
+  sourceDocument: z.string().optional(),
+  note: z.string().optional(),
+});
+
+export const IFUEntrySchema = z.object({
+  institution: z.string(),
+  accountNumber: z.string().optional(),
+  dividends: ConfidentNumberSchema.optional(),
+  interests: ConfidentNumberSchema.optional(),
+  capitalGains: ConfidentNumberSchema.optional(),
+  withholdingTax: ConfidentNumberSchema.optional(),
+  socialContributions: ConfidentNumberSchema.optional(),
+});
+
+export const SCPIEntrySchema = z.object({
+  scpiName: z.string(),
+  managementCompany: z.string().optional(),
+  frenchIncome: ConfidentNumberSchema.optional(),
+  foreignIncome: ConfidentNumberSchema.optional(),
+  deductibleInterests: ConfidentNumberSchema.optional(),
+  socialContributions: ConfidentNumberSchema.optional(),
+});
+
+export const LifeInsuranceEntrySchema = z.object({
+  contractName: z.string(),
+  insurer: z.string().optional(),
+  contractAge: z.enum(["less_than_8", "more_than_8"]).optional(),
+  withdrawals: ConfidentNumberSchema.optional(),
+  taxableShare: ConfidentNumberSchema.optional(),
+  withholdingTax: ConfidentNumberSchema.optional(),
+});
+
+export const GenericCategoryEntrySchema = z.object({
+  label: z.string(),
+  items: z.array(z.record(z.string(), z.unknown())).default([]),
+  notes: z.string().optional(),
+});
+
+export const ExtractedDataSchema = z.object({
+  taxpayer: TaxpayerSchema,
+  taxYear: z.number().int(),
+  detectedCategories: z.array(TaxCategoryEnum).default([]),
+  ifu: z.array(IFUEntrySchema).default([]),
+  scpi: z.array(SCPIEntrySchema).default([]),
+  lifeInsurance: z.array(LifeInsuranceEntrySchema).default([]),
+  realEstateIncome: GenericCategoryEntrySchema.optional(),
+  dividends: GenericCategoryEntrySchema.optional(),
+  interests: GenericCategoryEntrySchema.optional(),
+  capitalGains: GenericCategoryEntrySchema.optional(),
+  foreignAccounts: GenericCategoryEntrySchema.optional(),
+  retirementSavings: GenericCategoryEntrySchema.optional(),
+  deductibleExpenses: GenericCategoryEntrySchema.optional(),
+  taxCredits: GenericCategoryEntrySchema.optional(),
+  warnings: z.array(z.string()).default([]),
+  missingData: z.array(z.string()).default([]),
+  globalConfidence: ConfidenceLevelEnum.default("medium"),
+});
+export type ExtractedData = z.infer<typeof ExtractedDataSchema>;
+
+export const ExtractionMetadataSchema = z.object({
+  extractionPromptVersion: z.string(),
+  extractedAt: z.string(),
+  modelUsed: z.string().optional(),
+  dryRun: z.boolean().default(false),
+});
+export type ExtractionMetadata = z.infer<typeof ExtractionMetadataSchema>;
+
+export const ExtractionResultSchema = z.object({
+  data: ExtractedDataSchema,
+  metadata: ExtractionMetadataSchema,
+});
+export type ExtractionResult = z.infer<typeof ExtractionResultSchema>;
+
+export const ExtractionStatusEnum = z.enum([
+  "extraction_not_started",
+  "extraction_processing",
+  "extraction_completed",
+  "extraction_completed_with_warnings",
+  "extraction_failed",
+  "extraction_needs_review",
+]);
+export type ExtractionStatus = z.infer<typeof ExtractionStatusEnum>;
+
+export const ConsistencyIssueSeverityEnum = z.enum(["info", "warning", "error"]);
+export type ConsistencyIssueSeverity = z.infer<typeof ConsistencyIssueSeverityEnum>;
+
+export const ConsistencyIssueSchema = z.object({
+  code: z.string(),
+  severity: ConsistencyIssueSeverityEnum,
+  message: z.string(),
+  field: z.string().optional(),
+});
+export type ConsistencyIssue = z.infer<typeof ConsistencyIssueSchema>;
+
+export const ExtractionAuditSchema = z.object({
+  declarationId: z.string(),
+  extractedAt: z.string(),
+  extractionPromptVersion: z.string(),
+  modelUsed: z.string().optional(),
+  dryRun: z.boolean(),
+  detectedCategories: z.array(z.string()),
+  globalConfidence: ConfidenceLevelEnum,
+  status: ExtractionStatusEnum,
+  numberOfFiles: z.number().int().nonnegative(),
+  numberOfExtractedFields: z.number().int().nonnegative(),
+  numberOfWarnings: z.number().int().nonnegative(),
+  numberOfMissingData: z.number().int().nonnegative(),
+  numberOfConsistencyIssues: z.number().int().nonnegative(),
+  consistencyIssues: z.array(ConsistencyIssueSchema),
+  warnings: z.array(z.string()),
+  missingData: z.array(z.string()),
+});
+export type ExtractionAudit = z.infer<typeof ExtractionAuditSchema>;
+
+export const ExtractTaxDataResponseSchema = z.object({
+  data: ExtractedDataSchema,
+  metadata: ExtractionMetadataSchema,
+  audit: ExtractionAuditSchema,
+  status: ExtractionStatusEnum,
+});
+export type ExtractTaxDataResponse = z.infer<typeof ExtractTaxDataResponseSchema>;
