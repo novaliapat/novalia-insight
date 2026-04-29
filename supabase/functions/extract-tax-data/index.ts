@@ -278,7 +278,22 @@ Deno.serve(async (req) => {
       console.error("Zod validation failed", validated.error.flatten());
       return jsonError(502, "Réponse IA non conforme au schéma", validated.error.flatten());
     }
-    const extracted: ExtractedData = validated.data;
+    // Forcer/écraser les champs de traçabilité côté serveur (source de vérité).
+    const extracted: ExtractedData = {
+      ...validated.data,
+      extractionPromptVersion: EXTRACTION_PROMPT_VERSION,
+      extractedAt: new Date().toISOString(),
+      modelUsed: MODEL_USED,
+    };
+
+    // --- Mode dry-run : pas de persistance ---
+    if (dryRun) {
+      console.log("[extract-tax-data] dryRun=true → no DB write", { declarationId });
+      return new Response(
+        JSON.stringify({ ...extracted, dryRun: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // --- Persistance ---
     const confidenceScore =
@@ -311,6 +326,8 @@ Deno.serve(async (req) => {
         files_count: files.length,
         confidence: extracted.globalConfidence,
         detected_categories: extracted.detectedCategories,
+        prompt_version: EXTRACTION_PROMPT_VERSION,
+        model_used: MODEL_USED,
       },
     });
 
