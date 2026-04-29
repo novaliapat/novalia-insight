@@ -89,7 +89,8 @@ export async function persistExtractionAudit(audit: ExtractionAudit): Promise<vo
       {
         declaration_id: audit.declarationId,
         action: "extraction_audit_generated",
-        metadata: audit as unknown as Record<string, unknown>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        metadata: JSON.parse(JSON.stringify(audit)) as any,
       },
     ]);
     if (error) {
