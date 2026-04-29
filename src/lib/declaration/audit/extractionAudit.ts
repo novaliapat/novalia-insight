@@ -85,11 +85,13 @@ export function buildExtractionAudit(params: {
  */
 export async function persistExtractionAudit(audit: ExtractionAudit): Promise<void> {
   try {
-    const { error } = await supabase.from("declaration_audit_logs").insert({
-      declaration_id: audit.declarationId,
-      action: "extraction_audit_generated",
-      metadata: audit as unknown as Record<string, unknown>,
-    });
+    const { error } = await supabase.from("declaration_audit_logs").insert([
+      {
+        declaration_id: audit.declarationId,
+        action: "extraction_audit_generated",
+        metadata: audit as unknown as Record<string, unknown>,
+      },
+    ]);
     if (error) {
       console.warn("[extractionAudit] persist failed", error.message);
     }
