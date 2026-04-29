@@ -50,6 +50,37 @@ export interface BuildGuidanceOutput {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// 0. Catégories effectives — union de detectedCategories et catégories
+//    inférées depuis les champs réellement présents dans validated_data.
+// ─────────────────────────────────────────────────────────────────────────
+export function deriveEffectiveCategories(d: ExtractedData): TaxCategory[] {
+  const set = new Set<TaxCategory>(
+    ((d.detectedCategories ?? []) as TaxCategory[]),
+  );
+
+  const ifu = d.ifu ?? [];
+  if (ifu.length > 0) set.add("ifu" as TaxCategory);
+  if (ifu.some((i) => (i.dividends?.value ?? 0) > 0)) set.add("dividends" as TaxCategory);
+  if (ifu.some((i) => (i.interests?.value ?? 0) > 0)) set.add("interests" as TaxCategory);
+
+  const scpi = d.scpi ?? [];
+  if (scpi.length > 0) set.add("scpi" as TaxCategory);
+  if (scpi.some((s) => (s.deductibleInterests?.value ?? 0) > 0)) {
+    set.add("deductible_expenses" as TaxCategory);
+  }
+  if (scpi.some((s) => (s.foreignIncome?.value ?? 0) > 0)) {
+    set.add("foreign_accounts" as TaxCategory);
+  }
+
+  if ((d.lifeInsurance ?? []).length > 0) set.add("life_insurance" as TaxCategory);
+  if (d.realEstateIncome) set.add("real_estate_income" as TaxCategory);
+  if (d.foreignAccounts) set.add("foreign_accounts" as TaxCategory);
+  if (d.deductibleExpenses) set.add("deductible_expenses" as TaxCategory);
+
+  return [...set];
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // 1. Détection des situations à partir des données validées
 // ─────────────────────────────────────────────────────────────────────────
 export function detectSituations(d: ExtractedData): {
@@ -426,7 +457,7 @@ function buildMissingSources(args: {
 // ─────────────────────────────────────────────────────────────────────────
 export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidanceOutput {
   const d = input.validatedData;
-  const detected = (d.detectedCategories ?? []) as TaxCategory[];
+  const detected = deriveEffectiveCategories(d);
 
   const { situations, hasForeignIncome, hasRealEstateIncome } = detectSituations(d);
 
