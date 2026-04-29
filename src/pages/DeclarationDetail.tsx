@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Loader2, Eye, ListChecks } from "lucide-react";
+import { ChevronRight, Loader2, Eye } from "lucide-react";
 import { useLoadDeclaration } from "@/hooks/useDeclarationPersistence";
 import { FinalSummaryStep } from "@/components/declaration/FinalSummaryStep";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
