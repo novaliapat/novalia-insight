@@ -406,7 +406,7 @@ function buildProposalsFromMapping(args: {
       confidence = "low";
       status = "needs_review";
       requiresManualReview = true;
-      blockingReason = `Aucune source officielle disponible pour la catégorie "${entry.category}".`;
+      blockingReason = "Source DGFiP non retrouvée automatiquement. La case reste proposée à titre indicatif et doit être vérifiée.";
     } else if (reviewHint) {
       confidence = "medium";
       status = "needs_review";
