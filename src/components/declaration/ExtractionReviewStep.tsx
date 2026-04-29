@@ -177,6 +177,14 @@ export const ExtractionReviewStep = ({
 
       <ConsistencyIssuesPanel issues={issues} />
 
+      <EvidenceQualityPanel
+        data={{
+          ifu: display.ifu as unknown as Array<Record<string, unknown>>,
+          scpi: display.scpi as unknown as Array<Record<string, unknown>>,
+          lifeInsurance: display.lifeInsurance as unknown as Array<Record<string, unknown>>,
+        }}
+      />
+
       {evidences.length > 0 && (
         <section className="space-y-3">
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
