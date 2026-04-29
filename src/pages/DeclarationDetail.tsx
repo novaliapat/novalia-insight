@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Card } from "@/components/ui/card";
@@ -13,8 +13,12 @@ import { DeclarationReviewStatusBadge } from "@/components/declaration/review/De
 import { ExtractionAuditPanel } from "@/components/declaration/audit/ExtractionAuditPanel";
 import { QuickReviewPanel } from "@/components/declaration/review/QuickReviewPanel";
 import { PendingReviewBanner } from "@/components/declaration/review/PendingReviewBanner";
+import { ReviewBlockingBanner } from "@/components/declaration/review/ReviewBlockingBanner";
+import { ReviewOverrideDialog } from "@/components/declaration/review/ReviewOverrideDialog";
+import { useReviewBlockingState } from "@/hooks/useReviewBlockingState";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { ExtractionStatusEnum } from "@/lib/declaration/contracts/statusContract";
+import type { DeclarationReviewStatus } from "@/lib/declaration/review/computeReviewStatus";
 
 const DeclarationDetail = () => {
   const { id } = useParams();
