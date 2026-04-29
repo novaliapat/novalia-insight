@@ -28,10 +28,31 @@ const DeclarationDetail = () => {
   const { load, loading, error, data } = useLoadDeclaration();
   const [overrideOpen, setOverrideOpen] = useState(false);
   const guidance = useDeclarationGuidance(id ?? null);
+  const [autoGenAttempted, setAutoGenAttempted] = useState(false);
 
   useEffect(() => {
     if (id) load(id);
   }, [id, load]);
+
+  // Auto-génération du guide déclaratif si analyse présente mais guide absent.
+  // Une seule tentative par montage de page pour éviter toute boucle.
+  useEffect(() => {
+    if (!id) return;
+    if (autoGenAttempted) return;
+    if (guidance.loading || guidance.generating) return;
+    if (guidance.guidance) return;
+    if (!data?.analysis) return;
+    setAutoGenAttempted(true);
+    guidance.generateGuidance(id);
+  }, [
+    id,
+    data?.analysis,
+    guidance.guidance,
+    guidance.loading,
+    guidance.generating,
+    autoGenAttempted,
+    guidance,
+  ]);
 
   const parsedExtractionStatus = data?.extractionStatus
     ? ExtractionStatusEnum.safeParse(data.extractionStatus)
@@ -162,6 +183,7 @@ const DeclarationDetail = () => {
               onPrev={() => history.back()}
               onSave={() => {}}
               declarationId={id}
+              isPersisted
             />
             {id && data && (
               <div className="mt-6">
