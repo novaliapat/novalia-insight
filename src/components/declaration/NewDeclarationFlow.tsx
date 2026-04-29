@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDeclarationFlow } from "@/hooks/useDeclarationFlow";
 import { useDeclarationDraft } from "@/hooks/useDeclarationDraft";
@@ -13,9 +13,12 @@ import { ExtractionReviewStep } from "./ExtractionReviewStep";
 import { ManualValidationStep } from "./ManualValidationStep";
 import { FiscalAnalysisStep } from "./FiscalAnalysisStep";
 import { FinalSummaryStep } from "./FinalSummaryStep";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
+import type { ExtractedData } from "@/lib/declaration/schemas/extractedDataSchema";
+import type { FiscalAnalysis } from "@/lib/declaration/schemas/fiscalAnalysisSchema";
 
 const STEPS = [
   { num: 1, label: "Documents" },
