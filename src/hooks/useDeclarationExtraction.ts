@@ -1,21 +1,22 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  ExtractedDataSchema,
+  ExtractionResultSchema,
   type ExtractedData,
+  type ExtractionMetadata,
 } from "@/lib/declaration/schemas/extractedDataSchema";
 
 type Status = "idle" | "loading" | "success" | "error";
 
 /**
- * Hook d'extraction des données fiscales (Lot 2 : edge function réelle).
- * Appelle `extract-tax-data` qui charge les fichiers depuis Storage
- * et retourne un JSON validé par Zod.
+ * Hook d'extraction des données fiscales.
+ * Appelle `extract-tax-data` qui retourne { data, metadata }.
  */
 export function useDeclarationExtraction() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ExtractedData | null>(null);
+  const [metadata, setMetadata] = useState<ExtractionMetadata | null>(null);
 
   const extract = async (
     declarationId: string,
@@ -29,7 +30,6 @@ export function useDeclarationExtraction() {
         { body: { declarationId, dryRun: options?.dryRun ?? false } },
       );
       if (invokeErr) {
-        // FunctionsHttpError contient parfois la réponse JSON
         let msg = invokeErr.message;
         try {
           const ctx = (invokeErr as unknown as { context?: Response }).context;
@@ -45,10 +45,11 @@ export function useDeclarationExtraction() {
       if (resp && typeof resp === "object" && "error" in resp && resp.error) {
         throw new Error(String(resp.error));
       }
-      const parsed = ExtractedDataSchema.parse(resp);
-      setData(parsed);
+      const parsed = ExtractionResultSchema.parse(resp);
+      setData(parsed.data);
+      setMetadata(parsed.metadata);
       setStatus("success");
-      return parsed;
+      return parsed.data;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       setError(msg);
@@ -61,7 +62,8 @@ export function useDeclarationExtraction() {
     setStatus("idle");
     setError(null);
     setData(null);
+    setMetadata(null);
   };
 
-  return { status, error, data, extract, reset };
+  return { status, error, data, metadata, extract, reset };
 }
