@@ -402,7 +402,7 @@ function buildProposalsFromMapping(args: {
       confidence = "low";
       status = "needs_review";
       requiresManualReview = true;
-      blockingReason = `Aucune source officielle disponible pour la catégorie "${entry.category}".`;
+      blockingReason = "Source DGFiP non retrouvée automatiquement. La case reste proposée à titre indicatif et doit être vérifiée.";
     } else if (reviewHint) {
       confidence = "medium";
       status = "needs_review";
@@ -502,14 +502,14 @@ function buildMissingSources(args: {
     if (!payload || payload.sources.length === 0) {
       missing.push({
         category: cat,
-        reason: `Aucune source RAG ingérée pour la catégorie "${cat}".`,
+        reason: "Documentation fiscale non disponible pour cette catégorie. Source officielle à confirmer.",
         suggestedSources: ["Brochure pratique IR 2025", "Notices DGFiP", "BOFiP"],
         blocksHighConfidence: true,
       });
     } else if (!payload.hasOfficial) {
       missing.push({
         category: cat,
-        reason: `Aucune source officielle (DGFiP/BOFiP) pour la catégorie "${cat}".`,
+        reason: "Source DGFiP / brochure non disponible pour cette catégorie. Vérification manuelle requise.",
         suggestedSources: ["Brochure pratique IR 2025", "Notices DGFiP", "BOFiP"],
         blocksHighConfidence: true,
       });
@@ -525,12 +525,19 @@ export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidan
   const d = input.validatedData;
   const detected = deriveEffectiveCategories(d);
 
+  // Fallback catalogue brochure : injecte les sources brochure officielles
+  // pour ne jamais laisser une case sans source identifiable.
+  const effectiveRagByCategory = mergeRagWithCatalogFallback(
+    input.ragByCategory,
+    detected,
+  );
+
   const { situations, hasForeignIncome, hasRealEstateIncome } = detectSituations(d);
 
   const requiredForms = buildRequiredForms({
     detectedCategories: detected,
     hasForeignIncome,
-    ragByCategory: input.ragByCategory,
+    ragByCategory: effectiveRagByCategory,
   });
 
   const { amountByBox, reviewHints } = mapValidatedAmountsToBoxes(d);
@@ -539,7 +546,7 @@ export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidan
     detectedCategories: detected,
     amountByBox,
     reviewHints,
-    ragByCategory: input.ragByCategory,
+    ragByCategory: effectiveRagByCategory,
   });
 
   const steps = buildDeclarationSteps({
@@ -550,7 +557,7 @@ export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidan
   const manualReviewItems = buildManualReviewItems(d);
   const missingSources = buildMissingSources({
     detectedCategories: detected,
-    ragByCategory: input.ragByCategory,
+    ragByCategory: effectiveRagByCategory,
   });
 
   // Confiance globale grossière
