@@ -112,5 +112,5 @@ Rappels critiques :
 - Donnée incertaine -> confidence:"low" + entrée dans warnings.
 - Contradictions entre fichiers -> NE PAS trancher, entrée dans warnings.
 - Chaque montant DOIT avoir sourceDocument (nom de fichier exact).
-- Renseigne extractionPromptVersion, extractedAt (ISO 8601 UTC), et modelUsed si possible.
-- Réponds uniquement en appelant l'outil "submit_extraction".`;
+- Réponds uniquement en appelant l'outil "submit_extraction".
+- N'inclus PAS extractionPromptVersion, extractedAt ni modelUsed (ajoutés par le serveur).`;
