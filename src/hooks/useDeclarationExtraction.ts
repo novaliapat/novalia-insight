@@ -1,34 +1,48 @@
 import { useState } from "react";
-import { ExtractedDataSchema, type ExtractedData } from "@/lib/declaration/schemas/extractedDataSchema";
-import { MOCK_EXTRACTED } from "@/lib/declaration/utils/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  ExtractedDataSchema,
+  type ExtractedData,
+} from "@/lib/declaration/schemas/extractedDataSchema";
 
 type Status = "idle" | "loading" | "success" | "error";
 
 /**
- * Hook d'extraction des données fiscales.
- * V1 : retourne des données mockées après un délai.
- * V2 : appellera l'edge function `extract-tax-data`.
+ * Hook d'extraction des données fiscales (Lot 2 : edge function réelle).
+ * Appelle `extract-tax-data` qui charge les fichiers depuis Storage
+ * et retourne un JSON validé par Zod.
  */
 export function useDeclarationExtraction() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ExtractedData | null>(null);
 
-  const extract = async (_files: File[]): Promise<ExtractedData | null> => {
+  const extract = async (declarationId: string): Promise<ExtractedData | null> => {
     setStatus("loading");
     setError(null);
     try {
-      // --- MOCK ---
-      await new Promise((r) => setTimeout(r, 1500));
-      const parsed = ExtractedDataSchema.parse(MOCK_EXTRACTED);
-
-      // --- À brancher en V2 ---
-      // const { data, error } = await supabase.functions.invoke("extract-tax-data", {
-      //   body: { fileIds: [...] },
-      // });
-      // if (error) throw error;
-      // const parsed = ExtractedDataSchema.parse(data);
-
+      const { data: resp, error: invokeErr } = await supabase.functions.invoke(
+        "extract-tax-data",
+        { body: { declarationId } },
+      );
+      if (invokeErr) {
+        // FunctionsHttpError contient parfois la réponse JSON
+        let msg = invokeErr.message;
+        try {
+          const ctx = (invokeErr as unknown as { context?: Response }).context;
+          if (ctx) {
+            const body = await ctx.clone().json();
+            if (body?.error) msg = body.error;
+          }
+        } catch {
+          // ignore
+        }
+        throw new Error(msg);
+      }
+      if (resp && typeof resp === "object" && "error" in resp && resp.error) {
+        throw new Error(String(resp.error));
+      }
+      const parsed = ExtractedDataSchema.parse(resp);
       setData(parsed);
       setStatus("success");
       return parsed;
@@ -40,5 +54,11 @@ export function useDeclarationExtraction() {
     }
   };
 
-  return { status, error, data, extract };
+  const reset = () => {
+    setStatus("idle");
+    setError(null);
+    setData(null);
+  };
+
+  return { status, error, data, extract, reset };
 }
