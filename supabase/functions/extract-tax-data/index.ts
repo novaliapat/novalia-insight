@@ -11,6 +11,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { EXTRACTION_SYSTEM_PROMPT, EXTRACTION_USER_PROMPT } from "./extractionPrompt.ts";
 
 // ---------------- Schémas Zod (mirror du front) ----------------
 
