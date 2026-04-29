@@ -460,7 +460,9 @@ function buildMissingSources(args: {
 // ─────────────────────────────────────────────────────────────────────────
 export function buildDeclarationGuidance(input: BuildGuidanceInput): BuildGuidanceOutput {
   const d = input.validatedData;
-  const detected = (d.detectedCategories ?? []) as TaxCategory[];
+  // Catégories effectives = union de detectedCategories + catégories inférées
+  // depuis les champs validated_data réellement remplis.
+  const detected = deriveEffectiveCategories(d);
 
   const { situations, hasForeignIncome, hasRealEstateIncome } = detectSituations(d);
 
