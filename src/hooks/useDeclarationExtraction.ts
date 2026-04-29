@@ -17,13 +17,16 @@ export function useDeclarationExtraction() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ExtractedData | null>(null);
 
-  const extract = async (declarationId: string): Promise<ExtractedData | null> => {
+  const extract = async (
+    declarationId: string,
+    options?: { dryRun?: boolean },
+  ): Promise<ExtractedData | null> => {
     setStatus("loading");
     setError(null);
     try {
       const { data: resp, error: invokeErr } = await supabase.functions.invoke(
         "extract-tax-data",
-        { body: { declarationId } },
+        { body: { declarationId, dryRun: options?.dryRun ?? false } },
       );
       if (invokeErr) {
         // FunctionsHttpError contient parfois la réponse JSON

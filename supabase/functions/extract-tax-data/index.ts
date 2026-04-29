@@ -1,17 +1,13 @@
-// Edge function: extract-tax-data
-// Lot 2 — Extraction réelle via Lovable AI multimodal (Gemini).
-// - Vérifie l'auth
-// - Vérifie que l'utilisateur possède la déclaration
-// - Récupère les fichiers depuis Supabase Storage (bucket privé)
-// - Appelle Lovable AI avec les fichiers en input multimodal
-// - Valide la réponse avec Zod (schéma strict)
-// - Persiste extracted_data + audit log
-// - Aucune logique fiscale, aucune case fiscale proposée
-
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { z } from "https://esm.sh/zod@3.23.8";
-import { EXTRACTION_SYSTEM_PROMPT, EXTRACTION_USER_PROMPT } from "./extractionPrompt.ts";
+import {
+  EXTRACTION_SYSTEM_PROMPT,
+  EXTRACTION_USER_PROMPT,
+  EXTRACTION_PROMPT_VERSION,
+} from "./extractionPrompt.ts";
+
+const MODEL_USED = "google/gemini-2.5-pro";
 
 // ---------------- Schémas Zod (mirror du front) ----------------
 
@@ -84,6 +80,9 @@ const ExtractedDataSchema = z.object({
   warnings: z.array(z.string()).default([]),
   missingData: z.array(z.string()).default([]),
   globalConfidence: ConfidenceLevelEnum.default("medium"),
+  extractionPromptVersion: z.string().optional(),
+  extractedAt: z.string().optional(),
+  modelUsed: z.string().optional(),
 });
 
 type ExtractedData = z.infer<typeof ExtractedDataSchema>;
@@ -92,6 +91,7 @@ type ExtractedData = z.infer<typeof ExtractedDataSchema>;
 
 const RequestSchema = z.object({
   declarationId: z.string().uuid(),
+  dryRun: z.boolean().optional().default(false),
 });
 
 // ---------------- Prompts ----------------
@@ -135,6 +135,9 @@ const TOOL_SCHEMA = {
         warnings: { type: "array", items: { type: "string" } },
         missingData: { type: "array", items: { type: "string" } },
         globalConfidence: { type: "string", enum: ["high", "medium", "low"] },
+        extractionPromptVersion: { type: "string" },
+        extractedAt: { type: "string", description: "ISO 8601 UTC timestamp" },
+        modelUsed: { type: "string" },
       },
       required: [
         "taxpayer", "taxYear", "detectedCategories",
@@ -179,7 +182,7 @@ Deno.serve(async (req) => {
     if (!parsedBody.success) {
       return jsonError(400, "Paramètres invalides", parsedBody.error.flatten());
     }
-    const { declarationId } = parsedBody.data;
+    const { declarationId, dryRun } = parsedBody.data;
 
     // --- Ownership ---
     const admin = createClient(supabaseUrl, supabaseServiceKey);
@@ -199,11 +202,13 @@ Deno.serve(async (req) => {
     if (filesErr) return jsonError(500, "Lecture des fichiers échouée");
     if (!files || files.length === 0) return jsonError(400, "Aucun fichier à analyser");
 
-    // Marquer "extraction_pending"
-    await admin
-      .from("declarations")
-      .update({ status: "extraction_pending" })
-      .eq("id", declarationId);
+    // Marquer "extraction_pending" (sauf dry-run)
+    if (!dryRun) {
+      await admin
+        .from("declarations")
+        .update({ status: "extraction_pending" })
+        .eq("id", declarationId);
+    }
 
     // --- Téléchargement + base64 ---
     const aiContent: Array<Record<string, unknown>> = [
@@ -273,7 +278,22 @@ Deno.serve(async (req) => {
       console.error("Zod validation failed", validated.error.flatten());
       return jsonError(502, "Réponse IA non conforme au schéma", validated.error.flatten());
     }
-    const extracted: ExtractedData = validated.data;
+    // Forcer/écraser les champs de traçabilité côté serveur (source de vérité).
+    const extracted: ExtractedData = {
+      ...validated.data,
+      extractionPromptVersion: EXTRACTION_PROMPT_VERSION,
+      extractedAt: new Date().toISOString(),
+      modelUsed: MODEL_USED,
+    };
+
+    // --- Mode dry-run : pas de persistance ---
+    if (dryRun) {
+      console.log("[extract-tax-data] dryRun=true → no DB write", { declarationId });
+      return new Response(
+        JSON.stringify({ ...extracted, dryRun: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // --- Persistance ---
     const confidenceScore =
@@ -306,6 +326,8 @@ Deno.serve(async (req) => {
         files_count: files.length,
         confidence: extracted.globalConfidence,
         detected_categories: extracted.detectedCategories,
+        prompt_version: EXTRACTION_PROMPT_VERSION,
+        model_used: MODEL_USED,
       },
     });
 
