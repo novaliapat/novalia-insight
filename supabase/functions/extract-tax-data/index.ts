@@ -6,6 +6,9 @@ import {
   EXTRACTION_USER_PROMPT,
   EXTRACTION_PROMPT_VERSION,
 } from "./extractionPrompt.ts";
+import { runExtractionConsistencyChecks } from "./consistencyChecks.ts";
+import { deriveExtractionStatus, type ExtractionStatus } from "./extractionStatus.ts";
+import { countExtractedFields, type ExtractionAudit } from "./extractionAudit.ts";
 
 const MODEL_USED = "google/gemini-2.5-pro";
 
