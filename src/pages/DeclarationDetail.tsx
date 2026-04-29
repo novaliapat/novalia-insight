@@ -10,6 +10,7 @@ import { FinalSummaryStep } from "@/components/declaration/FinalSummaryStep";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
 import { ExtractionStatusBadge } from "@/components/declaration/ExtractionStatusBadge";
 import { ExtractionAuditPanel } from "@/components/declaration/audit/ExtractionAuditPanel";
+import { QuickReviewPanel } from "@/components/declaration/review/QuickReviewPanel";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { ExtractionStatusEnum } from "@/lib/declaration/contracts/statusContract";
 
@@ -78,8 +79,9 @@ const DeclarationDetail = () => {
         )}
 
         {!loading && id && (
-          <div className="mb-6">
+          <div className="mb-6 space-y-4">
             <ExtractionAuditPanel declarationId={id} />
+            <QuickReviewPanel declarationId={id} />
           </div>
         )}
 
