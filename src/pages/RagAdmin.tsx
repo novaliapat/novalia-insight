@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Card } from "@/components/ui/card";
@@ -8,11 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronRight, Loader2, BookPlus } from "lucide-react";
+import { ChevronRight, Loader2, BookPlus, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { ingestRagDocument } from "@/lib/rag/ragClient";
 import { RAG_LIBRARIES } from "@/lib/rag/ragCategories";
 import type { TaxCategory } from "@/lib/declaration/contracts/extractedDataContract";
+import { BROCHURE_IR_2025_SEED } from "@/lib/rag/seed/brochureIr2025Seed";
+import { supabase } from "@/integrations/supabase/client";
 
 const RagAdmin = () => {
   const [title, setTitle] = useState("");
