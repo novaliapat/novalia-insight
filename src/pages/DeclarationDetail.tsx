@@ -9,6 +9,7 @@ import { useLoadDeclaration } from "@/hooks/useDeclarationPersistence";
 import { FinalSummaryStep } from "@/components/declaration/FinalSummaryStep";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
 import { ExtractionStatusBadge } from "@/components/declaration/ExtractionStatusBadge";
+import { DeclarationReviewStatusBadge } from "@/components/declaration/review/DeclarationReviewStatusBadge";
 import { ExtractionAuditPanel } from "@/components/declaration/audit/ExtractionAuditPanel";
 import { QuickReviewPanel } from "@/components/declaration/review/QuickReviewPanel";
 import { PendingReviewBanner } from "@/components/declaration/review/PendingReviewBanner";
@@ -57,6 +58,7 @@ const DeclarationDetail = () => {
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               {extractionStatus && <ExtractionStatusBadge status={extractionStatus} />}
+              <DeclarationReviewStatusBadge status={data.reviewStatus} />
               <Badge variant="secondary">
                 {DeclarationStatusLabel[data.declaration.status as keyof typeof DeclarationStatusLabel] ?? data.declaration.status}
               </Badge>

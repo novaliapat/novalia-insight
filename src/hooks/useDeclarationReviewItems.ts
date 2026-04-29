@@ -27,22 +27,21 @@ interface State {
   error: string | null;
 }
 
-// La table `declaration_review_items` n'est pas encore dans `Database` typé.
-// On utilise un cast localisé pour préserver la sécurité de type ailleurs.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reviewTable = () => (supabase as any).from("declaration_review_items");
 
-async function logAudit(declarationId: string, action: string, metadata: Record<string, unknown>) {
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id ?? null;
-  await supabase.from("declaration_audit_logs").insert([
-    {
-      declaration_id: declarationId,
-      user_id: userId,
-      action,
-      metadata: metadata as never,
-    },
-  ]);
+type EdgeAction = "resolve" | "ignore" | "reopen" | "update_note";
+
+async function callEdge(reviewItemId: string, action: EdgeAction, note?: string | null) {
+  const { data, error } = await supabase.functions.invoke("update-review-item", {
+    body: { reviewItemId, action, note },
+  });
+  if (error) throw new Error(error.message);
+  return data as {
+    ok: boolean;
+    reviewItem: { id: string; declaration_id: string; status: ReviewItemStatus; note: string | null };
+    declarationReviewStatus: string;
+  };
 }
 
 export function useDeclarationReviewItems(declarationId: string | null | undefined) {
@@ -66,37 +65,23 @@ export function useDeclarationReviewItems(declarationId: string | null | undefin
   }, [declarationId, load]);
 
   const updateStatus = useCallback(
-    async (item: ReviewItem, status: ReviewItemStatus) => {
-      const { error } = await reviewTable()
-        .update({ status })
-        .eq("id", item.id);
-      if (error) throw new Error(error.message);
-      await logAudit(item.declaration_id, status === "resolved" ? "review_item_resolved" : "review_item_ignored", {
-        review_item_id: item.id,
-        source_type: item.source_type,
-        source_code: item.source_code,
-        field: item.field,
-      });
+    async (item: ReviewItem, action: "resolve" | "ignore" | "reopen") => {
+      const res = await callEdge(item.id, action);
       setState((s) => ({
         ...s,
-        items: s.items.map((it) => (it.id === item.id ? { ...it, status } : it)),
+        items: s.items.map((it) =>
+          it.id === item.id ? { ...it, status: res.reviewItem.status } : it,
+        ),
       }));
     },
     [],
   );
 
   const setNote = useCallback(async (item: ReviewItem, note: string | null) => {
-    const { error } = await reviewTable()
-      .update({ note })
-      .eq("id", item.id);
-    if (error) throw new Error(error.message);
-    await logAudit(item.declaration_id, "review_item_note_updated", {
-      review_item_id: item.id,
-      has_note: Boolean(note && note.trim().length > 0),
-    });
+    const res = await callEdge(item.id, "update_note", note);
     setState((s) => ({
       ...s,
-      items: s.items.map((it) => (it.id === item.id ? { ...it, note } : it)),
+      items: s.items.map((it) => (it.id === item.id ? { ...it, note: res.reviewItem.note } : it)),
     }));
   }, []);
 
@@ -116,9 +101,9 @@ export function useDeclarationReviewItems(declarationId: string | null | undefin
     error: state.error,
     counts,
     reload: () => declarationId && load(declarationId),
-    markResolved: (item: ReviewItem) => updateStatus(item, "resolved"),
-    markIgnored: (item: ReviewItem) => updateStatus(item, "ignored"),
-    reopen: (item: ReviewItem) => updateStatus(item, "pending"),
+    markResolved: (item: ReviewItem) => updateStatus(item, "resolve"),
+    markIgnored: (item: ReviewItem) => updateStatus(item, "ignore"),
+    reopen: (item: ReviewItem) => updateStatus(item, "reopen"),
     setNote,
   };
 }
