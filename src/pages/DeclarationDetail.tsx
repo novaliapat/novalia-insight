@@ -18,6 +18,7 @@ import { ReviewOverrideDialog } from "@/components/declaration/review/ReviewOver
 import { RagSearchPanel } from "@/components/rag/RagSearchPanel";
 import { ExportPanel } from "@/components/declaration/export/ExportPanel";
 import { useReviewBlockingState } from "@/hooks/useReviewBlockingState";
+import { useDeclarationGuidance } from "@/hooks/useDeclarationGuidance";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { ExtractionStatusEnum } from "@/lib/declaration/contracts/statusContract";
 import type { DeclarationReviewStatus } from "@/lib/declaration/review/computeReviewStatus";
