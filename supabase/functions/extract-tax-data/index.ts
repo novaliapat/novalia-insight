@@ -9,7 +9,11 @@ import {
 import { runExtractionConsistencyChecks } from "./consistencyChecks.ts";
 import { deriveExtractionStatus } from "./extractionStatus.ts";
 import { countExtractedFields } from "./extractionAudit.ts";
-import { deriveReviewItemsFromAudit } from "../_shared/review/deriveReviewItems.ts";
+import { countEvidenceMetrics } from "../_shared/audit/evidenceMetrics.ts";
+import {
+  deriveReviewItemsFromAudit,
+  deriveWeakEvidenceReviewItems,
+} from "../_shared/review/deriveReviewItems.ts";
 import {
   computeReviewStatusFromItems,
   type ReviewItemStatus,
