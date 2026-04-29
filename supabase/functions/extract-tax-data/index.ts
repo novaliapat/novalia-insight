@@ -135,6 +135,9 @@ const TOOL_SCHEMA = {
         warnings: { type: "array", items: { type: "string" } },
         missingData: { type: "array", items: { type: "string" } },
         globalConfidence: { type: "string", enum: ["high", "medium", "low"] },
+        extractionPromptVersion: { type: "string" },
+        extractedAt: { type: "string", description: "ISO 8601 UTC timestamp" },
+        modelUsed: { type: "string" },
       },
       required: [
         "taxpayer", "taxYear", "detectedCategories",
