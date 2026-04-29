@@ -2,6 +2,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { extractKeywords } from "../_shared/rag/ragChunking.ts";
 import { isRagCategory } from "../_shared/rag/ragCategories.ts";
+import { embedText } from "../_shared/rag/ragEmbedding.ts";
 import { BROCHURE_IR_2025_SEED, type BrochureSeedChunk } from "../_shared/seed/brochureIr2025Seed.ts";
 
 const BROCHURE_NAME = "Brochure pratique IR 2025 — Déclaration des revenus 2024";
@@ -138,7 +139,7 @@ Deno.serve(async (req) => {
           content: c.content,
           summary: c.excerpt,
           keywords: c.keywords?.length ? c.keywords : extractKeywords(c.content),
-          embedding: null, // V1 : embedding différé
+          embedding: embedText(c.content) as unknown as string,
           metadata: {
             dedupKey: key,
             provenance: "official_brochure",
