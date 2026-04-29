@@ -11,6 +11,7 @@ import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
 import { ExtractionStatusBadge } from "@/components/declaration/ExtractionStatusBadge";
 import { ExtractionAuditPanel } from "@/components/declaration/audit/ExtractionAuditPanel";
 import { QuickReviewPanel } from "@/components/declaration/review/QuickReviewPanel";
+import { PendingReviewBanner } from "@/components/declaration/review/PendingReviewBanner";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { ExtractionStatusEnum } from "@/lib/declaration/contracts/statusContract";
 
@@ -99,6 +100,7 @@ const DeclarationDetail = () => {
 
         {!loading && data?.analysis && (
           <>
+            {id && <PendingReviewBanner declarationId={id} />}
             <FinalSummaryStep
               analysis={data.analysis}
               onPrev={() => history.back()}
