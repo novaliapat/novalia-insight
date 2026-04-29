@@ -11,6 +11,7 @@ import type {
   ExtractionAudit,
 } from "@/lib/declaration/contracts/auditContract";
 import type { ExtractionStatus } from "@/lib/declaration/contracts/statusContract";
+import { countEvidenceMetrics } from "./evidenceMetrics";
 
 export type { ConsistencyIssue, ExtractionAudit };
 
