@@ -168,14 +168,20 @@ export const NewDeclarationFlow = () => {
           />
         )}
         {state.step === 3 && state.extractedData && (
-          <ManualValidationStep
-            data={state.extractedData}
-            onValidated={(d) => {
-              flow.setValidatedData(d);
-              flow.next();
-            }}
-            onPrev={flow.prev}
-          />
+          <div className="space-y-4">
+            {(blocking.result.level === "warning" ||
+              blocking.result.level === "blocked") && (
+              <ReviewBlockingBanner result={blocking.result} />
+            )}
+            <ManualValidationStep
+              data={state.extractedData}
+              onValidated={(d) => {
+                flow.setValidatedData(d);
+                tryProceedToAnalysis();
+              }}
+              onPrev={flow.prev}
+            />
+          </div>
         )}
         {state.step === 4 && state.validatedData && (
           <FiscalAnalysisStep
@@ -187,14 +193,30 @@ export const NewDeclarationFlow = () => {
           />
         )}
         {state.step === 5 && state.analysis && (
-          <FinalSummaryStep
-            analysis={state.analysis}
-            onPrev={flow.prev}
-            onSave={handleSave}
-            saving={saving}
-          />
+          <div className="space-y-4">
+            {blocking.result.level !== "none" && (
+              <ReviewBlockingBanner result={blocking.result} />
+            )}
+            <FinalSummaryStep
+              analysis={state.analysis}
+              onPrev={flow.prev}
+              onSave={handleSave}
+              saving={saving || !blocking.result.canContinue}
+            />
+          </div>
         )}
       </div>
+
+      {state.declarationId && (
+        <ReviewOverrideDialog
+          open={overrideOpen}
+          onOpenChange={setOverrideOpen}
+          declarationId={state.declarationId}
+          result={blocking.result}
+          context={pendingAction === "save" ? "before_finalization" : "before_analysis"}
+          onConfirmed={handleOverrideConfirmed}
+        />
+      )}
     </div>
   );
 };
