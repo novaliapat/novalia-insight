@@ -57,6 +57,7 @@ export type Database = {
           detected_categories: Database["public"]["Enums"]["tax_category"][]
           extracted_data: Json
           id: string
+          metadata: Json
           updated_at: string
         }
         Insert: {
@@ -66,6 +67,7 @@ export type Database = {
           detected_categories?: Database["public"]["Enums"]["tax_category"][]
           extracted_data?: Json
           id?: string
+          metadata?: Json
           updated_at?: string
         }
         Update: {
@@ -75,6 +77,7 @@ export type Database = {
           detected_categories?: Database["public"]["Enums"]["tax_category"][]
           extracted_data?: Json
           id?: string
+          metadata?: Json
           updated_at?: string
         }
         Relationships: [
