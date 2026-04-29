@@ -24,7 +24,7 @@ export interface BrochureSeedChunk {
   content: string;
   excerpt: string;
   keywords: string[];
-  provenance: "manual_seed";
+  provenance: "official_brochure";
   warning: string;
 }
 
@@ -40,7 +40,7 @@ const base = (extra: Partial<BrochureSeedChunk>): BrochureSeedChunk => ({
   sourceName: BROCHURE_NAME,
   sourceUrl: BROCHURE_URL,
   isOfficialSource: true,
-  provenance: "manual_seed",
+  provenance: "official_brochure",
   warning: STD_WARNING,
   // valeurs par défaut écrasées par `extra`
   category: "other",
