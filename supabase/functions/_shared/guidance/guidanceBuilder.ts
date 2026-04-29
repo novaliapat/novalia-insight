@@ -42,6 +42,72 @@ export interface BuildGuidanceInput {
   ragByCategory: Record<string, CategoryRagPayload>;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Fallback catalogue : transforme une entrée du BOX_CATALOG_2025 en FormSource
+// "officielle" lorsqu'elle est sourcée brochure (page connue). Permet d'afficher
+// les cases utiles même quand la table tax_rag_chunks est vide.
+// ─────────────────────────────────────────────────────────────────────────
+export function sourceFromBoxEntry(entry: BoxCatalogEntry): FormSource {
+  return {
+    title: `${entry.formId} ${entry.boxOrLine} — ${entry.label}`,
+    sourceName: entry.sourceName,
+    sourceUrl: entry.sourceUrl,
+    sourceType: entry.sourceType,
+    taxYear: entry.taxYear,
+    isOfficialSource: entry.sourceType === "official_brochure",
+    provenance: entry.sourceType === "official_brochure"
+      ? "official_brochure"
+      : "manual_seed",
+    pageNumber: entry.pageNumber ?? undefined,
+    formId: entry.formId,
+    sectionLabel: entry.boxOrLine,
+    boxCodes: [entry.boxOrLine],
+    excerpt: entry.description,
+    relevanceScore: 0.9,
+  };
+}
+
+export function catalogSourcesForCategory(category: TaxCategory): FormSource[] {
+  return BOX_CATALOG_2025
+    .filter((b) => b.category === category && b.sourceType === "official_brochure" && b.pageNumber)
+    .map(sourceFromBoxEntry);
+}
+
+export function mergeRagWithCatalogFallback(
+  ragByCategory: Record<string, CategoryRagPayload>,
+  detectedCategories: TaxCategory[],
+): Record<string, CategoryRagPayload> {
+  const merged: Record<string, CategoryRagPayload> = { ...ragByCategory };
+  for (const cat of detectedCategories) {
+    const existing = merged[cat];
+    const catalogSources = catalogSourcesForCategory(cat);
+    if (catalogSources.length === 0) {
+      if (!existing) merged[cat] = { category: cat, sources: [], hasOfficial: false };
+      continue;
+    }
+    const baseSources = existing?.sources ?? [];
+    const seen = new Set(
+      baseSources.map(
+        (s) => `${s.title}|${s.pageNumber ?? ""}|${(s.boxCodes ?? []).join(",")}`,
+      ),
+    );
+    const fallbackToAdd: FormSource[] = [];
+    for (const s of catalogSources) {
+      const key = `${s.title}|${s.pageNumber ?? ""}|${(s.boxCodes ?? []).join(",")}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        fallbackToAdd.push(s);
+      }
+    }
+    merged[cat] = {
+      category: cat,
+      sources: [...baseSources, ...fallbackToAdd],
+      hasOfficial: (existing?.hasOfficial ?? false) || fallbackToAdd.some((s) => s.isOfficialSource),
+    };
+  }
+  return merged;
+}
+
 export interface BuildGuidanceOutput {
   guidance: DeclarationGuidance;
   status: "guidance_completed" | "guidance_completed_with_warnings" | "guidance_failed";
