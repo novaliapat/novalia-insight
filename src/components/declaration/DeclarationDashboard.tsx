@@ -19,6 +19,7 @@ import {
   ExtractionStatusLabel,
   type ExtractionStatus,
 } from "@/lib/declaration/status/extractionStatus";
+import { DeclarationReviewStatusBadge } from "./review/DeclarationReviewStatusBadge";
 import { Plus, FileText, Loader2, Eye, Filter } from "lucide-react";
 
 type StatusFilter = "all" | ExtractionStatus | "no_extraction";
@@ -157,6 +158,7 @@ export const DeclarationDashboard = () => {
                     {d.extraction_status && (
                       <ExtractionStatusBadge status={d.extraction_status} />
                     )}
+                    <DeclarationReviewStatusBadge status={d.review_status} hideWhenNone />
                     <Badge variant="secondary">{DeclarationStatusLabel[d.status]}</Badge>
                   </div>
                 </Card>
