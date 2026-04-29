@@ -183,6 +183,7 @@ const DeclarationDetail = () => {
               onPrev={() => history.back()}
               onSave={() => {}}
               declarationId={id}
+              isPersisted
             />
             {id && data && (
               <div className="mt-6">
