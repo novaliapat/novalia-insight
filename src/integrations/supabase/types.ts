@@ -56,6 +56,7 @@ export type Database = {
           declaration_id: string
           detected_categories: Database["public"]["Enums"]["tax_category"][]
           extracted_data: Json
+          extraction_status: string
           id: string
           metadata: Json
           updated_at: string
@@ -66,6 +67,7 @@ export type Database = {
           declaration_id: string
           detected_categories?: Database["public"]["Enums"]["tax_category"][]
           extracted_data?: Json
+          extraction_status?: string
           id?: string
           metadata?: Json
           updated_at?: string
@@ -76,6 +78,7 @@ export type Database = {
           declaration_id?: string
           detected_categories?: Database["public"]["Enums"]["tax_category"][]
           extracted_data?: Json
+          extraction_status?: string
           id?: string
           metadata?: Json
           updated_at?: string
