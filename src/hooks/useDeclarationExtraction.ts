@@ -1,34 +1,19 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  ExtractionResultSchema,
+  ExtractTaxDataResponseSchema,
   type ExtractedData,
   type ExtractionMetadata,
-} from "@/lib/declaration/schemas/extractedDataSchema";
-import { z } from "zod";
-import type { ExtractionAudit } from "@/lib/declaration/audit/extractionAudit";
-import type { ExtractionStatus } from "@/lib/declaration/status/extractionStatus";
+  type ExtractionAudit,
+  type ExtractionStatus,
+} from "@/lib/declaration/contracts";
 
 type Status = "idle" | "loading" | "success" | "error";
 
-const ExtractionStatusSchema = z.enum([
-  "extraction_not_started",
-  "extraction_processing",
-  "extraction_completed",
-  "extraction_completed_with_warnings",
-  "extraction_failed",
-  "extraction_needs_review",
-]);
-
-// Audit/status optionnels pour rester rétrocompatible avec d'anciennes réponses.
-const ExtendedResultSchema = ExtractionResultSchema.extend({
-  audit: z.unknown().optional(),
-  status: ExtractionStatusSchema.optional(),
-});
-
 /**
- * Hook d'extraction. La source de vérité (audit + status) vient désormais
- * de l'edge function. Le front les expose tels quels.
+ * Hook d'extraction. La source de vérité (audit + status) vient de l'edge
+ * function et est validée par `ExtractTaxDataResponseSchema` (contrat unique
+ * partagé front/edge via _shared/contracts/).
  */
 export function useDeclarationExtraction() {
   const [status, setStatus] = useState<Status>("idle");
@@ -65,11 +50,11 @@ export function useDeclarationExtraction() {
       if (resp && typeof resp === "object" && "error" in resp && resp.error) {
         throw new Error(String(resp.error));
       }
-      const parsed = ExtendedResultSchema.parse(resp);
+      const parsed = ExtractTaxDataResponseSchema.parse(resp);
       setData(parsed.data);
       setMetadata(parsed.metadata);
-      setAudit((parsed.audit as ExtractionAudit | undefined) ?? null);
-      setExtractionStatus(parsed.status ?? null);
+      setAudit(parsed.audit);
+      setExtractionStatus(parsed.status);
       setStatus("success");
       return parsed.data;
     } catch (e) {
