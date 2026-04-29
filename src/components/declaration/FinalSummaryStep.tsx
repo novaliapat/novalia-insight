@@ -23,8 +23,10 @@ interface Props {
   onSave: () => void;
   saving?: boolean;
   declarationId?: string | null;
-  /** Vrai si la déclaration est déjà persistée (page détail). */
+  /** Conservé pour compat — n'a plus d'effet sur l'affichage du guide. */
   isPersisted?: boolean;
+  /** Libellé personnalisé du bouton de finalisation. */
+  saveLabel?: string;
 }
 
 export const FinalSummaryStep = ({
@@ -33,7 +35,7 @@ export const FinalSummaryStep = ({
   onSave,
   saving = false,
   declarationId,
-  isPersisted = false,
+  saveLabel = "Finaliser",
 }: Props) => {
   // Lecture seule du statut guidance pour gérer le bouton PDF.
   const { guidance, status: guidanceStatus } = useDeclarationGuidance(
