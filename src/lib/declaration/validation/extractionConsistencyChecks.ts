@@ -1,13 +1,10 @@
-import type { ExtractedData, TaxCategory } from "@/lib/declaration/schemas/extractedDataSchema";
+import type { ExtractedData, TaxCategory } from "@/lib/declaration/contracts/extractedDataContract";
+import type {
+  ConsistencyIssue,
+  ConsistencyIssueSeverity,
+} from "@/lib/declaration/contracts/auditContract";
 
-export type ConsistencyIssueSeverity = "info" | "warning" | "error";
-
-export interface ConsistencyIssue {
-  code: string;
-  severity: ConsistencyIssueSeverity;
-  message: string;
-  field?: string;
-}
+export type { ConsistencyIssue, ConsistencyIssueSeverity };
 
 interface ConfidentField {
   value: number;
