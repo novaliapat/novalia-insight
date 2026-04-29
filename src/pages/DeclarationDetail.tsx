@@ -157,6 +157,20 @@ const DeclarationDetail = () => {
           </>
         )}
       </main>
+
+      {id && (
+        <ReviewOverrideDialog
+          open={overrideOpen}
+          onOpenChange={setOverrideOpen}
+          declarationId={id}
+          result={blocking.result}
+          context="before_finalization"
+          onConfirmed={() => {
+            blocking.reload();
+          }}
+          onGoToReview={goToReview}
+        />
+      )}
     </div>
   );
 };
