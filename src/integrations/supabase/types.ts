@@ -219,6 +219,39 @@ export type Database = {
           },
         ]
       }
+      declaration_guidance: {
+        Row: {
+          created_at: string
+          declaration_id: string
+          guidance: Json
+          id: string
+          missing_sources: Json
+          status: string
+          tax_year: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          declaration_id: string
+          guidance?: Json
+          id?: string
+          missing_sources?: Json
+          status?: string
+          tax_year: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          declaration_id?: string
+          guidance?: Json
+          id?: string
+          missing_sources?: Json
+          status?: string
+          tax_year?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       declaration_review_items: {
         Row: {
           audit_log_id: string | null
