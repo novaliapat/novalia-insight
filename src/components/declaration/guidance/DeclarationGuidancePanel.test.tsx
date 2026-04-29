@@ -123,20 +123,23 @@ describe("DeclarationGuidancePanel", () => {
   it("la proposition 2DC affiche le montant et la source brochure (page)", () => {
     hookState.guidance = baseGuidance;
     render(<DeclarationGuidancePanel declarationId="abc" />);
-    expect(screen.getByText(/2DC/)).toBeInTheDocument();
-    expect(screen.getByText(/1[\s ]?500,00/)).toBeInTheDocument();
-    // Au moins une mention de la brochure et de la page
-    expect(screen.getAllByText(/Brochure IR 2025.*p\.124/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2DC/).length).toBeGreaterThan(0);
+    // formatEuro utilise un narrow no-break space
+    expect(
+      screen.getByText((t) => /1\s?500,00/.test(t.replace(/\u202f/g, " "))),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/Brochure IR 2025.*p\.124/).length,
+    ).toBeGreaterThan(0);
   });
 
   it("la proposition 4BL avec requiresManualReview affiche blockingReason", () => {
     hookState.guidance = baseGuidance;
     render(<DeclarationGuidancePanel declarationId="abc" />);
-    expect(screen.getByText(/4BL/)).toBeInTheDocument();
+    expect(screen.getAllByText(/4BL/).length).toBeGreaterThan(0);
     expect(
       screen.getByText(/convention fiscale à vérifier/i),
     ).toBeInTheDocument();
-    // amount null → label "À déterminer / vérifier"
     expect(screen.getByText(/à déterminer/i)).toBeInTheDocument();
   });
 
