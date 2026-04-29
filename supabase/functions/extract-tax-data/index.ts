@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
 
     // --- Téléchargement + base64 ---
     const aiContent: Array<Record<string, unknown>> = [
-      { type: "text", text: USER_PROMPT },
+      { type: "text", text: EXTRACTION_USER_PROMPT },
     ];
     for (const f of files) {
       const { data: blob, error: dlErr } = await admin.storage
@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
           { role: "user", content: aiContent },
         ],
         tools: [TOOL_SCHEMA],
