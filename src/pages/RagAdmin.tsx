@@ -27,6 +27,39 @@ const RagAdmin = () => {
   const [content, setContent] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // ── Brochure IR 2025 ────────────────────────────────────────────────
+  const brochureCategories = useMemo(
+    () => Array.from(new Set(BROCHURE_IR_2025_SEED.map((c) => c.category))).sort(),
+    [],
+  );
+  const [brochureBusy, setBrochureBusy] = useState(false);
+  const [brochureResult, setBrochureResult] = useState<{
+    insertedDocuments: number;
+    insertedChunks: number;
+    skippedChunks: number;
+    categories: string[];
+  } | null>(null);
+
+  const ingestBrochure = async () => {
+    setBrochureBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ingest-brochure-rag-seed", {
+        body: {},
+      });
+      if (error) throw error;
+      setBrochureResult(data);
+      const msg =
+        data.insertedChunks === 0
+          ? `Déjà ingéré (${data.skippedChunks} chunks existants)`
+          : `Brochure ingérée : ${data.insertedChunks} chunks (${data.skippedChunks} déjà présents)`;
+      toast.success(msg);
+    } catch (e) {
+      toast.error((e as Error).message ?? "Erreur ingestion brochure");
+    } finally {
+      setBrochureBusy(false);
+    }
+  };
+
   const submit = async () => {
     if (!title.trim() || !content.trim()) {
       toast.error("Titre et contenu sont obligatoires.");
