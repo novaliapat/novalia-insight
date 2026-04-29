@@ -80,6 +80,9 @@ const ExtractedDataSchema = z.object({
   warnings: z.array(z.string()).default([]),
   missingData: z.array(z.string()).default([]),
   globalConfidence: ConfidenceLevelEnum.default("medium"),
+  extractionPromptVersion: z.string().optional(),
+  extractedAt: z.string().optional(),
+  modelUsed: z.string().optional(),
 });
 
 type ExtractedData = z.infer<typeof ExtractedDataSchema>;
@@ -88,6 +91,7 @@ type ExtractedData = z.infer<typeof ExtractedDataSchema>;
 
 const RequestSchema = z.object({
   declarationId: z.string().uuid(),
+  dryRun: z.boolean().optional().default(false),
 });
 
 // ---------------- Prompts ----------------
