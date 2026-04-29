@@ -111,6 +111,7 @@ Champs à extraire par type de document (toujours avec sourceDocument = nom du f
 
 Rappels critiques :
 - Pas de prose, pas d'analyse, pas de cases fiscales, pas de jugement de conformité.
+- AUCUNE transformation fiscale : un brut reste un brut, un prélèvement reste un prélèvement, un revenu étranger reste un revenu étranger. Tu ne calcules ni base imposable, ni abattement, ni mécanisme applicable.
 - Montants : nombres décimaux en euros, point décimal, sans € ni espaces ("1 234,56 €" -> 1234.56).
 - Donnée absente -> NE PAS l'inclure + entrée dans missingData.
 - Donnée incertaine -> confidence:"low" + entrée dans warnings.
