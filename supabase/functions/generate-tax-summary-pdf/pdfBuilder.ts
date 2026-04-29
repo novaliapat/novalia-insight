@@ -77,9 +77,26 @@ const drawFooter = (ctx: Ctx) => {
 // Re-draw footer with correct page number after we know it
 // (we draw incrementally; cleanest is to draw footer when adding the page)
 
+// Helvetica supports WinAnsi/Latin-1. Map common unicode glyphs to safe equivalents,
+// then strip anything still outside the supported range.
+const UNICODE_MAP: Array<[RegExp, string]> = [
+  [/[\u2022\u25CF\u25E6\u2043]/g, "-"],     // bullets •●◦‣ → -
+  [/[\u2013\u2014]/g, "-"],                  // – — → -
+  [/[\u2018\u2019\u201A\u2032]/g, "'"],     // single quotes
+  [/[\u201C\u201D\u201E\u2033]/g, '"'],     // double quotes
+  [/\u2026/g, "..."],                        // …
+  [/[\u00A0\u2007\u2009\u202F\u200A\u200B]/g, " "], // various spaces (incl. NNBSP from Intl)
+  [/\u26A0\uFE0F?/g, "/!\\"],                // ⚠ → /!\
+  [/[\u2705\u2713\u2714]/g, "v"],           // ✓ ✔ ✅
+  [/[\u274C\u2717\u2718]/g, "x"],           // ✗ ✘ ❌
+  [/\u20AC/g, "EUR"],                        // € (kept already, but safe)
+];
 const sanitize = (s: unknown): string => {
   if (s === null || s === undefined) return "";
-  return String(s).replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u017F\u2013\u2014\u2018-\u201D\u20AC]/g, "?");
+  let out = String(s);
+  for (const [re, rep] of UNICODE_MAP) out = out.replace(re, rep);
+  // Keep printable ASCII + Latin-1 supplement + Latin Extended-A
+  return out.replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u017F]/g, "?");
 };
 
 const wrap = (text: string, font: PDFFont, size: number, maxWidth: number): string[] => {
