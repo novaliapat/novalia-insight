@@ -3,7 +3,11 @@
 
 import type { ConsistencyIssue } from "../contracts/extractionContracts.ts";
 
-export type ReviewItemSourceType = "consistency_issue" | "warning" | "missing_data";
+export type ReviewItemSourceType =
+  | "consistency_issue"
+  | "warning"
+  | "missing_data"
+  | "weak_evidence";
 export type ReviewItemSeverity = "info" | "warning" | "error";
 
 export interface DerivedReviewItem {
