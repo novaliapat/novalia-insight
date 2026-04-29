@@ -24,18 +24,83 @@ export type TaxCategory = z.infer<typeof TaxCategoryEnum>;
 export const ConfidenceLevelEnum = z.enum(["high", "medium", "low"]);
 export type ConfidenceLevel = z.infer<typeof ConfidenceLevelEnum>;
 
-export const TaxpayerSchema = z.object({
-  fullName: z.string().optional(),
-  fiscalNumber: z.string().optional(),
-  taxHousehold: z.string().optional(),
-  address: z.string().optional(),
+export const EvidenceTypeEnum = z.enum([
+  "document_name_only",
+  "text_excerpt",
+  "page_reference",
+  "visual_region",
+]);
+export type EvidenceType = z.infer<typeof EvidenceTypeEnum>;
+
+export const BoundingBoxSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
 });
+export type BoundingBox = z.infer<typeof BoundingBoxSchema>;
+
+/**
+ * DocumentEvidence — preuve documentaire d'un champ extrait.
+ *
+ * Règles de validité (superRefine) :
+ *  - text_excerpt    → extractedText obligatoire (non vide)
+ *  - page_reference  → pageNumber obligatoire (>= 1)
+ *  - visual_region   → boundingBox obligatoire (et pageNumber recommandé)
+ *  - document_name_only → aucun champ supplémentaire requis
+ *
+ * L'IA ne doit JAMAIS fabriquer un extrait : si elle ne peut pas pointer
+ * une page ou un texte, elle remplit `evidenceType="document_name_only"`.
+ */
+export const DocumentEvidenceSchema = z
+  .object({
+    sourceDocument: z.string(),
+    pageNumber: z.number().int().positive().optional(),
+    sectionLabel: z.string().optional(),
+    extractedText: z.string().optional(),
+    boundingBox: BoundingBoxSchema.optional(),
+    confidence: ConfidenceLevelEnum,
+    evidenceType: EvidenceTypeEnum,
+    note: z.string().optional(),
+  })
+  .superRefine((ev, ctx) => {
+    if (ev.evidenceType === "text_excerpt") {
+      if (!ev.extractedText || ev.extractedText.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["extractedText"],
+          message: "extractedText requis pour evidenceType=text_excerpt",
+        });
+      }
+    }
+    if (ev.evidenceType === "page_reference") {
+      if (typeof ev.pageNumber !== "number") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["pageNumber"],
+          message: "pageNumber requis pour evidenceType=page_reference",
+        });
+      }
+    }
+    if (ev.evidenceType === "visual_region") {
+      if (!ev.boundingBox) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["boundingBox"],
+          message: "boundingBox requis pour evidenceType=visual_region",
+        });
+      }
+    }
+  });
+export type DocumentEvidence = z.infer<typeof DocumentEvidenceSchema>;
 
 const ConfidentField = <T extends z.ZodTypeAny>(value: T) =>
   z.object({
     value,
     confidence: ConfidenceLevelEnum,
     sourceDocument: z.string().optional(),
+    /** Preuve documentaire enrichie — optionnelle pour rétrocompat. */
+    evidence: DocumentEvidenceSchema.optional(),
     note: z.string().optional(),
   });
 
