@@ -97,15 +97,18 @@ export const NewDeclarationFlow = () => {
       <div>
         {state.step === 1 && (
           <FileUploadStep
+            declarationId={state.declarationId}
+            draftLoading={draftLoading}
             files={state.files}
             onAdd={flow.addFiles}
+            onUpdate={flow.updateFile}
             onRemove={flow.removeFile}
             onNext={flow.next}
           />
         )}
         {state.step === 2 && (
           <ExtractionReviewStep
-            files={state.files}
+            declarationId={state.declarationId}
             extractedData={state.extractedData}
             onExtracted={flow.setExtractedData}
             onPrev={flow.prev}
