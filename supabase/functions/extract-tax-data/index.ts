@@ -95,30 +95,7 @@ const RequestSchema = z.object({
 });
 
 // ---------------- Prompts ----------------
-
-const SYSTEM_PROMPT = `Tu es un assistant d'extraction de données fiscales françaises.
-Ton SEUL rôle est d'identifier et de structurer les données présentes dans les documents fiscaux fournis (IFU, relevés SCPI, contrats d'assurance-vie, etc.).
-
-RÈGLES STRICTES :
-- Tu n'effectues AUCUN raisonnement fiscal.
-- Tu ne proposes AUCUNE case fiscale.
-- Tu n'inventes JAMAIS un montant. Si un montant n'est pas lisible : ne le mets pas et ajoute une entrée dans missingData.
-- En cas d'incertitude sur une valeur : confidence="low" et ajoute une entrée dans warnings.
-- Pour chaque champ chiffré, fournis: { value, confidence: "high"|"medium"|"low", sourceDocument: "<nom du fichier>", note?: "<précision>" }.
-- Identifie l'année fiscale (taxYear) depuis les documents. Si ambiguë, prends l'année la plus récente présente.
-- detectedCategories doit lister UNIQUEMENT les catégories réellement présentes dans les documents.
-
-Tu dois appeler la fonction "submit_extraction" avec un JSON strictement conforme au schéma fourni.`;
-
-const USER_PROMPT = `Analyse les documents fiscaux ci-joints et extrais les données structurées.
-Catégories possibles : ifu, scpi, life_insurance, real_estate_income, dividends, interests, capital_gains, foreign_accounts, per, tax_credits, deductible_expenses, other.
-
-Pour chaque document :
-- IFU (Imprimé Fiscal Unique) : institution, dividendes, intérêts, plus-values, PFU prélevé, prélèvements sociaux.
-- SCPI : nom de la SCPI, société de gestion, revenus France, revenus étrangers, intérêts déductibles, prélèvements sociaux.
-- Assurance-vie : nom du contrat, assureur, ancienneté (less_than_8 / more_than_8), rachats, part imposable, PFU prélevé.
-
-Retourne UNIQUEMENT les données présentes. Ne complète pas les manques.`;
+// Voir extractionPrompt.ts (séparé pour pouvoir itérer indépendamment).
 
 // ---------------- Tool schema (structured output) ----------------
 
