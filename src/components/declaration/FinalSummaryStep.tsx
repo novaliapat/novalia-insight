@@ -23,8 +23,10 @@ interface Props {
   onSave: () => void;
   saving?: boolean;
   declarationId?: string | null;
-  /** Vrai si la déclaration est déjà persistée (page détail). */
+  /** Conservé pour compat — n'a plus d'effet sur l'affichage du guide. */
   isPersisted?: boolean;
+  /** Libellé personnalisé du bouton de finalisation. */
+  saveLabel?: string;
 }
 
 export const FinalSummaryStep = ({
@@ -33,7 +35,7 @@ export const FinalSummaryStep = ({
   onSave,
   saving = false,
   declarationId,
-  isPersisted = false,
+  saveLabel = "Finaliser",
 }: Props) => {
   // Lecture seule du statut guidance pour gérer le bouton PDF.
   const { guidance, status: guidanceStatus } = useDeclarationGuidance(
@@ -100,7 +102,7 @@ export const FinalSummaryStep = ({
             </Tooltip>
           </TooltipProvider>
           <Button size="sm" onClick={onSave} disabled={saving} className="gap-2">
-            <Save className="h-3.5 w-3.5" /> {saving ? "Enregistrement…" : "Enregistrer"}
+            <Save className="h-3.5 w-3.5" /> {saving ? "Enregistrement…" : saveLabel}
           </Button>
         </div>
       </div>
@@ -112,19 +114,17 @@ export const FinalSummaryStep = ({
         <p className="text-foreground/90 leading-relaxed">{analysis.summary}</p>
       </Card>
 
-      {/* Guide déclaratif — bloc principal */}
-      {isPersisted ? (
-        <DeclarationGuidancePanel declarationId={declarationId ?? null} />
+      {/* Guide déclaratif — bloc principal, dispo dès qu'on a un declarationId (draft) */}
+      {declarationId ? (
+        <DeclarationGuidancePanel declarationId={declarationId} />
       ) : (
         <Card className="p-5 bg-muted/30 border-l-4 border-l-accent">
           <h3 className="font-display text-base font-semibold mb-1.5 flex items-center gap-2">
             <FileCheck2 className="h-4 w-4 text-accent" />
-            Comment déclarer ces revenus ?
+            Création du dossier…
           </h3>
           <p className="text-sm text-muted-foreground">
-            Le guide déclaratif détaillé (formulaires, annexes, cases à cocher,
-            sources officielles) sera disponible automatiquement après{" "}
-            <strong className="text-foreground">enregistrement de l'analyse</strong>.
+            Préparation de votre dossier déclaratif en cours.
           </p>
         </Card>
       )}
@@ -148,24 +148,31 @@ export const FinalSummaryStep = ({
         </div>
       </Card>
 
-      {/* Cases fiscales regroupées par catégorie */}
-      <section className="space-y-6">
-        <h3 className="font-display text-xl font-semibold">Cases fiscales proposées</h3>
-        {Object.entries(casesByCategory).map(([cat, cases]) => (
-          <div key={cat} className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              <span className="h-px flex-1 bg-border" />
-              <span>{TaxCategoryLabel[cat as TaxCategory]}</span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <div className="grid gap-3">
-              {cases.map((tc) => (
-                <TaxCaseCard key={tc.id} taxCase={tc} />
-              ))}
-            </div>
+      {/* Analyse fiscale préliminaire — masquée si vide (le guide reste la source principale) */}
+      {analysis.taxCases.length > 0 && (
+        <section className="space-y-6">
+          <div>
+            <h3 className="font-display text-xl font-semibold">Analyse fiscale préliminaire</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Pistes issues de l'analyse RAG. Le guide ci-dessus reste la référence officielle.
+            </p>
           </div>
-        ))}
-      </section>
+          {Object.entries(casesByCategory).map(([cat, cases]) => (
+            <div key={cat} className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                <span className="h-px flex-1 bg-border" />
+                <span>{TaxCategoryLabel[cat as TaxCategory]}</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <div className="grid gap-3">
+                {cases.map((tc) => (
+                  <TaxCaseCard key={tc.id} taxCase={tc} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       {analysis.warnings.length > 0 && (
         <Card className="p-5">

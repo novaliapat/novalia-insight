@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDeclarationFlow } from "@/hooks/useDeclarationFlow";
 import { useDeclarationDraft } from "@/hooks/useDeclarationDraft";
@@ -13,9 +13,12 @@ import { ExtractionReviewStep } from "./ExtractionReviewStep";
 import { ManualValidationStep } from "./ManualValidationStep";
 import { FiscalAnalysisStep } from "./FiscalAnalysisStep";
 import { FinalSummaryStep } from "./FinalSummaryStep";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
+import type { ExtractedData } from "@/lib/declaration/schemas/extractedDataSchema";
+import type { FiscalAnalysis } from "@/lib/declaration/schemas/fiscalAnalysisSchema";
 
 const STEPS = [
   { num: 1, label: "Documents" },
@@ -63,6 +66,68 @@ export const NewDeclarationFlow = () => {
     }
     flow.next();
   };
+
+  // ── Persistance progressive : validated_data dès l'étape 3 ──────────
+  const persistValidated = useCallback(
+    async (declarationId: string, validated: ExtractedData) => {
+      try {
+        await supabase
+          .from("declaration_validated_data")
+          .delete()
+          .eq("declaration_id", declarationId);
+        await supabase.from("declaration_validated_data").insert({
+          declaration_id: declarationId,
+          validated_data: validated as unknown as never,
+        });
+      } catch (e) {
+        console.warn("[flow] persistValidated failed", e);
+      }
+    },
+    [],
+  );
+
+  // ── Persistance progressive : fiscal_analysis dès l'étape 4 ─────────
+  const persistAnalysis = useCallback(
+    async (declarationId: string, analysis: FiscalAnalysis) => {
+      try {
+        await supabase
+          .from("declaration_fiscal_analysis")
+          .delete()
+          .eq("declaration_id", declarationId);
+        await supabase.from("declaration_fiscal_analysis").insert({
+          declaration_id: declarationId,
+          analysis: analysis as unknown as never,
+        });
+        await supabase
+          .from("declarations")
+          .update({
+            title: `Déclaration ${analysis.taxYear}`,
+            tax_year: analysis.taxYear,
+          })
+          .eq("id", declarationId);
+      } catch (e) {
+        console.warn("[flow] persistAnalysis failed", e);
+      }
+    },
+    [],
+  );
+
+  // ── Génération auto du guide après analyse ──────────────────────────
+  const triggerGuidanceGeneration = useCallback(async (declarationId: string) => {
+    try {
+      const { data: existing } = await supabase
+        .from("declaration_guidance")
+        .select("id")
+        .eq("declaration_id", declarationId)
+        .maybeSingle();
+      if (existing) return;
+      await supabase.functions.invoke("generate-declaration-guidance", {
+        body: { declarationId },
+      });
+    } catch (e) {
+      console.warn("[flow] triggerGuidanceGeneration failed", e);
+    }
+  }, []);
 
   const doSave = async () => {
     if (!user) {
@@ -177,6 +242,9 @@ export const NewDeclarationFlow = () => {
               data={state.extractedData}
               onValidated={(d) => {
                 flow.setValidatedData(d);
+                if (state.declarationId) {
+                  void persistValidated(state.declarationId, d);
+                }
                 tryProceedToAnalysis();
               }}
               onPrev={flow.prev}
@@ -188,7 +256,14 @@ export const NewDeclarationFlow = () => {
             validatedData={state.validatedData}
             analysis={state.analysis}
             declarationId={state.declarationId}
-            onAnalyzed={flow.setAnalysis}
+            onAnalyzed={(a) => {
+              flow.setAnalysis(a);
+              if (state.declarationId) {
+                void persistAnalysis(state.declarationId, a).then(() =>
+                  triggerGuidanceGeneration(state.declarationId!),
+                );
+              }
+            }}
             onPrev={flow.prev}
             onNext={flow.next}
           />
@@ -204,6 +279,7 @@ export const NewDeclarationFlow = () => {
               onSave={handleSave}
               saving={saving || !blocking.result.canContinue}
               declarationId={state.declarationId}
+              saveLabel="Finaliser"
             />
           </div>
         )}
