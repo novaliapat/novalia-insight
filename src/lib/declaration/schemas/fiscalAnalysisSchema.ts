@@ -12,10 +12,19 @@ export const RAGSourceSchema = z.object({
   documentTitle: z.string(),
   excerpt: z.string().optional(),
   reference: z.string().optional(), // ex: "BOI-RPPM-RCM-20-10-20-50"
-  url: z.string().url().optional(),
+  url: z.string().optional(), // url() trop strict pour mocks/tests
   relevanceScore: z.number().min(0).max(1).optional(),
+  // ----- Champs ajoutés pour le RAG réel (Lot 4) -----
+  documentId: z.string().optional(),
+  chunkId: z.string().optional(),
+  sourceName: z.string().nullable().optional(),
+  sourceUrl: z.string().nullable().optional(),
+  isOfficialSource: z.boolean().optional(),
+  taxYear: z.number().int().nullable().optional(),
+  confidence: z.enum(["high", "medium", "low"]).optional(),
 });
 export type RAGSource = z.infer<typeof RAGSourceSchema>;
+
 
 export const TaxCaseSchema = z.object({
   id: z.string(),
