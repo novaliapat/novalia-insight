@@ -9,7 +9,11 @@ import {
 import { runExtractionConsistencyChecks } from "./consistencyChecks.ts";
 import { deriveExtractionStatus } from "./extractionStatus.ts";
 import { countExtractedFields } from "./extractionAudit.ts";
-import { deriveReviewItemsFromAudit } from "../_shared/review/deriveReviewItems.ts";
+import { countEvidenceMetrics } from "../_shared/audit/evidenceMetrics.ts";
+import {
+  deriveReviewItemsFromAudit,
+  deriveWeakEvidenceReviewItems,
+} from "../_shared/review/deriveReviewItems.ts";
 import {
   computeReviewStatusFromItems,
   type ReviewItemStatus,
@@ -236,6 +240,11 @@ Deno.serve(async (req) => {
       missingData: extracted.missingData,
       consistencyIssues,
     });
+    const evidenceMetrics = countEvidenceMetrics({
+      ifu: extracted.ifu as unknown as Array<Record<string, unknown>>,
+      scpi: extracted.scpi as unknown as Array<Record<string, unknown>>,
+      lifeInsurance: extracted.lifeInsurance as unknown as Array<Record<string, unknown>>,
+    });
     const audit: ExtractionAudit = {
       declarationId,
       extractedAt,
@@ -254,6 +263,7 @@ Deno.serve(async (req) => {
       numberOfWarnings: extracted.warnings.length,
       numberOfMissingData: extracted.missingData.length,
       numberOfConsistencyIssues: consistencyIssues.length,
+      ...evidenceMetrics,
       consistencyIssues,
       warnings: extracted.warnings,
       missingData: extracted.missingData,
@@ -318,11 +328,18 @@ Deno.serve(async (req) => {
 
     // --- Génération automatique des "review items" (idempotent via dedup_key) ---
     try {
-      const derived = deriveReviewItemsFromAudit({
-        consistencyIssues: audit.consistencyIssues,
-        warnings: audit.warnings,
-        missingData: audit.missingData,
-      });
+      const derived = [
+        ...deriveReviewItemsFromAudit({
+          consistencyIssues: audit.consistencyIssues,
+          warnings: audit.warnings,
+          missingData: audit.missingData,
+        }),
+        ...deriveWeakEvidenceReviewItems({
+          ifu: extracted.ifu as unknown as Array<Record<string, unknown>>,
+          scpi: extracted.scpi as unknown as Array<Record<string, unknown>>,
+          lifeInsurance: extracted.lifeInsurance as unknown as Array<Record<string, unknown>>,
+        }),
+      ];
       if (derived.length > 0) {
         const rows = derived.map((d) => ({
           declaration_id: declarationId,

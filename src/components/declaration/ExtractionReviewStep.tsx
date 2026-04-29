@@ -9,6 +9,7 @@ import {
   ExtractedEvidenceCard,
   flattenEvidences,
 } from "./ExtractedEvidenceCard";
+import { EvidenceQualityPanel } from "./EvidenceQualityPanel";
 import { AuditJsonViewer } from "./AuditJsonViewer";
 import { useDeclarationExtraction } from "@/hooks/useDeclarationExtraction";
 import { TaxCategoryLabel } from "@/lib/declaration/utils/taxFormatting";
@@ -175,6 +176,14 @@ export const ExtractionReviewStep = ({
       </Card>
 
       <ConsistencyIssuesPanel issues={issues} />
+
+      <EvidenceQualityPanel
+        data={{
+          ifu: display.ifu as unknown as Array<Record<string, unknown>>,
+          scpi: display.scpi as unknown as Array<Record<string, unknown>>,
+          lifeInsurance: display.lifeInsurance as unknown as Array<Record<string, unknown>>,
+        }}
+      />
 
       {evidences.length > 0 && (
         <section className="space-y-3">

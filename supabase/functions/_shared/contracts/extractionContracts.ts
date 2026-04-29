@@ -23,6 +23,64 @@ export type TaxCategory = z.infer<typeof TaxCategoryEnum>;
 export const ConfidenceLevelEnum = z.enum(["high", "medium", "low"]);
 export type ConfidenceLevel = z.infer<typeof ConfidenceLevelEnum>;
 
+export const EvidenceTypeEnum = z.enum([
+  "document_name_only",
+  "text_excerpt",
+  "page_reference",
+  "visual_region",
+]);
+export type EvidenceType = z.infer<typeof EvidenceTypeEnum>;
+
+export const BoundingBoxSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+});
+export type BoundingBox = z.infer<typeof BoundingBoxSchema>;
+
+export const DocumentEvidenceSchema = z
+  .object({
+    sourceDocument: z.string(),
+    pageNumber: z.number().int().positive().optional(),
+    sectionLabel: z.string().optional(),
+    extractedText: z.string().optional(),
+    boundingBox: BoundingBoxSchema.optional(),
+    confidence: ConfidenceLevelEnum,
+    evidenceType: EvidenceTypeEnum,
+    note: z.string().optional(),
+  })
+  .superRefine((ev, ctx) => {
+    if (ev.evidenceType === "text_excerpt") {
+      if (!ev.extractedText || ev.extractedText.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["extractedText"],
+          message: "extractedText requis pour evidenceType=text_excerpt",
+        });
+      }
+    }
+    if (ev.evidenceType === "page_reference") {
+      if (typeof ev.pageNumber !== "number") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["pageNumber"],
+          message: "pageNumber requis pour evidenceType=page_reference",
+        });
+      }
+    }
+    if (ev.evidenceType === "visual_region") {
+      if (!ev.boundingBox) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["boundingBox"],
+          message: "boundingBox requis pour evidenceType=visual_region",
+        });
+      }
+    }
+  });
+export type DocumentEvidence = z.infer<typeof DocumentEvidenceSchema>;
+
 export const TaxpayerSchema = z.object({
   fullName: z.string().optional(),
   fiscalNumber: z.string().optional(),
@@ -34,6 +92,7 @@ export const ConfidentNumberSchema = z.object({
   value: z.number(),
   confidence: ConfidenceLevelEnum,
   sourceDocument: z.string().optional(),
+  evidence: DocumentEvidenceSchema.optional(),
   note: z.string().optional(),
 });
 
@@ -141,6 +200,11 @@ export const ExtractionAuditSchema = z.object({
   numberOfWarnings: z.number().int().nonnegative(),
   numberOfMissingData: z.number().int().nonnegative(),
   numberOfConsistencyIssues: z.number().int().nonnegative(),
+  numberOfEvidenceItems: z.number().int().nonnegative().default(0),
+  numberOfWeakEvidence: z.number().int().nonnegative().default(0),
+  numberOfTextExcerpts: z.number().int().nonnegative().default(0),
+  numberOfPageReferences: z.number().int().nonnegative().default(0),
+  numberOfVisualRegions: z.number().int().nonnegative().default(0),
   consistencyIssues: z.array(ConsistencyIssueSchema),
   warnings: z.array(z.string()),
   missingData: z.array(z.string()),

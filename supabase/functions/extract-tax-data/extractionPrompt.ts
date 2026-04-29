@@ -1,7 +1,7 @@
 // Prompt d'extraction fiscale — Lot 2
 // -----------------------------------------------------------------------------
 // Version du prompt : à incrémenter à chaque modification de comportement.
-export const EXTRACTION_PROMPT_VERSION = "v1.0.0";
+export const EXTRACTION_PROMPT_VERSION = "v1.1.0";
 
 // -----------------------------------------------------------------------------
 // CLAUSE DE CONFORMITÉ
@@ -67,6 +67,28 @@ SOURCES & CONTRADICTIONS :
   -> Ajoute une entrée explicite dans "warnings" décrivant la contradiction
      (champ concerné, fichiers en conflit, valeurs respectives).
   -> Tu peux remonter la valeur la plus probable avec confidence:"low".
+
+PREUVE DOCUMENTAIRE (evidence) — RÈGLE STRICTE ANTI-HALLUCINATION :
+- Pour chaque champ chiffré, tu PEUX (mais n'es pas obligé) ajouter un objet
+  "evidence" décrivant d'où vient la donnée. Format :
+  {
+    sourceDocument: "<nom de fichier exact>",
+    confidence: "high"|"medium"|"low",
+    evidenceType: "document_name_only" | "text_excerpt" | "page_reference" | "visual_region",
+    pageNumber?: <entier 1-based, UNIQUEMENT si tu en es certain>,
+    sectionLabel?: "<titre de section visible dans le document>",
+    extractedText?: "<court extrait LITTÉRAL repris du document>",
+    boundingBox?: { x, y, width, height }   // uniquement si tu as une zone précise
+  }
+- Si tu N'es PAS capable d'identifier l'extrait, la page ou la zone :
+  -> evidenceType DOIT valoir "document_name_only".
+  -> NE remplis PAS pageNumber, sectionLabel, extractedText ou boundingBox.
+- Si tu remplis "extractedText" : ce doit être un extrait LITTÉRAL, court (<= 240 caractères),
+  copié tel quel depuis le document. JAMAIS de paraphrase, JAMAIS d'invention.
+- Si tu remplis "pageNumber" : tu dois en être certain. Sinon, omets-le.
+- Si tu remplis "boundingBox" : uniquement si tu as une zone visuelle précise.
+- Règle d'or : il vaut TOUJOURS mieux remonter "document_name_only" que d'inventer
+  un extrait, une page ou une zone. Une preuve absente est PRÉFÉRABLE à une preuve fausse.
 
 CONFIDENCE :
 - "high"   : valeur lisible sans ambiguïté.

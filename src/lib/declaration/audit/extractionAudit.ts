@@ -11,6 +11,7 @@ import type {
   ExtractionAudit,
 } from "@/lib/declaration/contracts/auditContract";
 import type { ExtractionStatus } from "@/lib/declaration/contracts/statusContract";
+import { countEvidenceMetrics } from "./evidenceMetrics";
 
 export type { ConsistencyIssue, ExtractionAudit };
 
@@ -45,6 +46,11 @@ export function buildExtractionAuditFallback(params: {
   status: ExtractionStatus;
 }): ExtractionAudit {
   const { declarationId, data, metadata, numberOfFiles, consistencyIssues, status } = params;
+  const evidenceMetrics = countEvidenceMetrics({
+    ifu: data.ifu as unknown as Array<Record<string, unknown>>,
+    scpi: data.scpi as unknown as Array<Record<string, unknown>>,
+    lifeInsurance: data.lifeInsurance as unknown as Array<Record<string, unknown>>,
+  });
   return {
     declarationId,
     extractedAt: metadata.extractedAt,
@@ -59,6 +65,7 @@ export function buildExtractionAuditFallback(params: {
     numberOfWarnings: data.warnings.length,
     numberOfMissingData: data.missingData.length,
     numberOfConsistencyIssues: consistencyIssues.length,
+    ...evidenceMetrics,
     consistencyIssues,
     warnings: data.warnings,
     missingData: data.missingData,
