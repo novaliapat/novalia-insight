@@ -104,6 +104,13 @@ const ConfidentField = <T extends z.ZodTypeAny>(value: T) =>
     note: z.string().optional(),
   });
 
+export const TaxpayerSchema = z.object({
+  fullName: z.string().optional(),
+  fiscalNumber: z.string().optional(),
+  taxHousehold: z.string().optional(),
+  address: z.string().optional(),
+});
+
 export const ConfidentNumberSchema = ConfidentField(z.number());
 
 export const IFUEntrySchema = z.object({
