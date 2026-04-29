@@ -102,7 +102,9 @@ export const ExportPanel = ({
           <span>
             {analysisFailed
               ? "L'analyse fiscale a échoué — relancez-la avant d'exporter."
-              : "Aucune analyse fiscale disponible. Lancez d'abord l'analyse."}
+              : !hasAnalysis
+                ? "Aucune analyse fiscale disponible. Lancez d'abord l'analyse."
+                : "Le PDF sera disponible après génération du guide déclaratif."}
           </span>
         </div>
       )}
@@ -113,7 +115,8 @@ export const ExportPanel = ({
           <span>
             Ce document sera généré <strong>avec des points à vérifier</strong>
             {reviewPending ? " (revue en attente)" : ""}
-            {hasManualReviewCases ? " (cases nécessitant une vérification)" : ""}.
+            {hasManualReviewCases ? " (cases nécessitant une vérification)" : ""}
+            {guidanceWithWarnings ? " (guide déclaratif avec alertes)" : ""}.
           </span>
         </div>
       )}
