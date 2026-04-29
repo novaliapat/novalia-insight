@@ -25,6 +25,7 @@ import {
   type ExtractionAudit,
   type ExtractionStatus,
 } from "../_shared/contracts/extractionContracts.ts";
+import { normalizeAiExtractionResponse, shapeOf } from "./normalizeAiResponse.ts";
 
 const MODEL_USED = "google/gemini-2.5-pro";
 
@@ -33,6 +34,7 @@ const MODEL_USED = "google/gemini-2.5-pro";
 const RequestSchema = z.object({
   declarationId: z.string().uuid(),
   dryRun: z.boolean().optional().default(false),
+  debug: z.boolean().optional().default(false),
 });
 
 // ---------------- Tool schema (structured output IA) ----------------
