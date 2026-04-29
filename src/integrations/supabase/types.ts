@@ -244,6 +244,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          review_status: string
           status: Database["public"]["Enums"]["declaration_status"]
           tax_year: number
           title: string
@@ -253,6 +254,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          review_status?: string
           status?: Database["public"]["Enums"]["declaration_status"]
           tax_year?: number
           title?: string
@@ -262,6 +264,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          review_status?: string
           status?: Database["public"]["Enums"]["declaration_status"]
           tax_year?: number
           title?: string
