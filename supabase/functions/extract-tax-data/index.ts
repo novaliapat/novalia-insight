@@ -277,19 +277,22 @@ Deno.serve(async (req) => {
       console.error("Zod validation failed", validated.error.flatten());
       return jsonError(502, "Réponse IA non conforme au schéma", validated.error.flatten());
     }
-    // Forcer/écraser les champs de traçabilité côté serveur (source de vérité).
-    const extracted: ExtractedData = {
-      ...validated.data,
+    // Données fiscales pures (issues de l'IA, validées Zod, sans métadonnées système).
+    const extracted: ExtractedData = validated.data;
+
+    // Métadonnées système : injectées EXCLUSIVEMENT par le serveur (source de vérité).
+    const metadata = {
       extractionPromptVersion: EXTRACTION_PROMPT_VERSION,
       extractedAt: new Date().toISOString(),
       modelUsed: MODEL_USED,
+      dryRun,
     };
 
     // --- Mode dry-run : pas de persistance ---
     if (dryRun) {
       console.log("[extract-tax-data] dryRun=true → no DB write", { declarationId });
       return new Response(
-        JSON.stringify({ ...extracted, dryRun: true }),
+        JSON.stringify({ data: extracted, metadata }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -306,6 +309,7 @@ Deno.serve(async (req) => {
       extracted_data: extracted as unknown as Record<string, unknown>,
       detected_categories: extracted.detectedCategories,
       confidence_score: confidenceScore,
+      metadata: metadata as unknown as Record<string, unknown>,
     });
     if (insErr) {
       console.error("insert extracted_data failed", insErr);
@@ -330,7 +334,7 @@ Deno.serve(async (req) => {
       },
     });
 
-    return new Response(JSON.stringify(extracted), {
+    return new Response(JSON.stringify({ data: extracted, metadata }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
