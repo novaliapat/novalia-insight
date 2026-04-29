@@ -1,25 +1,62 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Declaration } from "@/lib/declaration/schemas/declarationSchema";
+import {
+  ExtractionStatusEnum,
+  type ExtractionStatus,
+} from "@/lib/declaration/contracts/statusContract";
+
+export interface DeclarationWithExtraction extends Declaration {
+  /** Statut détaillé de l'extraction si l'étape a été lancée. */
+  extraction_status: ExtractionStatus | null;
+  detected_categories: string[];
+}
 
 export function useDeclarationHistory() {
-  const [declarations, setDeclarations] = useState<Declaration[]>([]);
+  const [declarations, setDeclarations] = useState<DeclarationWithExtraction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase
-      .from("declarations")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) {
-      setError(error.message);
+    const [{ data: decls, error: declErr }, { data: extracts, error: exErr }] =
+      await Promise.all([
+        supabase
+          .from("declarations")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("declaration_extracted_data")
+          .select("declaration_id, extraction_status, detected_categories"),
+      ]);
+
+    if (declErr || exErr) {
+      setError((declErr ?? exErr)?.message ?? "Erreur");
       setDeclarations([]);
-    } else {
-      setDeclarations((data ?? []) as Declaration[]);
+      setLoading(false);
+      return;
     }
+
+    const byId = new Map<string, { extraction_status: string | null; detected_categories: string[] }>();
+    for (const e of extracts ?? []) {
+      byId.set(e.declaration_id, {
+        extraction_status: e.extraction_status ?? null,
+        detected_categories: (e.detected_categories ?? []) as string[],
+      });
+    }
+
+    const enriched: DeclarationWithExtraction[] = (decls ?? []).map((d) => {
+      const ex = byId.get(d.id);
+      const raw = ex?.extraction_status;
+      const parsed = raw ? ExtractionStatusEnum.safeParse(raw) : null;
+      return {
+        ...(d as Declaration),
+        extraction_status: parsed?.success ? parsed.data : null,
+        detected_categories: ex?.detected_categories ?? [],
+      };
+    });
+    setDeclarations(enriched);
     setLoading(false);
   }, []);
 

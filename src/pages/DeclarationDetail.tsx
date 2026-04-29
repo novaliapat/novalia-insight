@@ -3,10 +3,14 @@ import { useParams, Link } from "react-router-dom";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ChevronRight, Loader2, Eye } from "lucide-react";
 import { useLoadDeclaration } from "@/hooks/useDeclarationPersistence";
 import { FinalSummaryStep } from "@/components/declaration/FinalSummaryStep";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
+import { ExtractionStatusBadge } from "@/components/declaration/ExtractionStatusBadge";
+import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
+import { ExtractionStatusEnum } from "@/lib/declaration/contracts/statusContract";
 
 const DeclarationDetail = () => {
   const { id } = useParams();
@@ -15,6 +19,12 @@ const DeclarationDetail = () => {
   useEffect(() => {
     if (id) load(id);
   }, [id, load]);
+
+  const parsedExtractionStatus = data?.extractionStatus
+    ? ExtractionStatusEnum.safeParse(data.extractionStatus)
+    : null;
+  const extractionStatus = parsedExtractionStatus?.success ? parsedExtractionStatus.data : null;
+  const needsReview = extractionStatus === "extraction_needs_review";
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,11 +42,45 @@ const DeclarationDetail = () => {
           </Card>
         )}
 
+        {!loading && data && (
+          <Card className="p-5 mb-6 flex items-center justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <h1 className="font-display text-xl font-semibold text-foreground truncate">
+                {data.declaration.title}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1">
+                Année fiscale {data.declaration.tax_year}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {extractionStatus && <ExtractionStatusBadge status={extractionStatus} />}
+              <Badge variant="secondary">
+                {DeclarationStatusLabel[data.declaration.status as keyof typeof DeclarationStatusLabel] ?? data.declaration.status}
+              </Badge>
+            </div>
+          </Card>
+        )}
+
+        {!loading && needsReview && (
+          <Card className="p-5 mb-6 border-warning/40 bg-warning/5">
+            <div className="flex items-start gap-3">
+              <Eye className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <div className="font-medium text-foreground mb-0.5">Revue manuelle requise</div>
+                <p className="text-muted-foreground">
+                  L'extraction de cette déclaration a une confiance faible ou contient des
+                  incohérences. Reprenez-la pour vérifier les données avant validation.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {!loading && (error || !data?.analysis) && (
           <Card className="p-10 text-center">
             <h2 className="font-display text-2xl font-semibold mb-2">Analyse introuvable</h2>
             <p className="text-muted-foreground text-sm mb-6">
-              {error ?? "Cette déclaration n'a pas d'analyse enregistrée."}
+              {error ?? "Cette déclaration n'a pas encore d'analyse fiscale enregistrée."}
             </p>
             <Link to="/">
               <Button variant="outline">Retour au tableau de bord</Button>
