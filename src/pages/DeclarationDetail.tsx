@@ -23,6 +23,7 @@ import type { DeclarationReviewStatus } from "@/lib/declaration/review/computeRe
 const DeclarationDetail = () => {
   const { id } = useParams();
   const { load, loading, error, data } = useLoadDeclaration();
+  const [overrideOpen, setOverrideOpen] = useState(false);
 
   useEffect(() => {
     if (id) load(id);
@@ -33,6 +34,17 @@ const DeclarationDetail = () => {
     : null;
   const extractionStatus = parsedExtractionStatus?.success ? parsedExtractionStatus.data : null;
   const needsReview = extractionStatus === "extraction_needs_review";
+
+  const blocking = useReviewBlockingState({
+    declarationId: id ?? null,
+    reviewStatus: (data?.reviewStatus as DeclarationReviewStatus) ?? null,
+    extractionStatus,
+  });
+
+  const goToReview = () => {
+    const el = document.getElementById("quick-review");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div className="min-h-screen bg-background">
