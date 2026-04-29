@@ -230,7 +230,7 @@ export const ExportPanel = ({
 
       <div className="space-y-3 mb-4">
         <OptionRow
-          label="Inclure les sources fiscales (RAG)"
+          label="Inclure les sources fiscales officielles"
           checked={opts.includeRagSources}
           onChange={(v) => setOpts((o) => ({ ...o, includeRagSources: v }))}
         />
@@ -373,7 +373,7 @@ export const ExportPanel = ({
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {row.include_rag_sources && (
                       <Badge variant="outline" className="text-[10px] py-0 h-4">
-                        RAG
+                        Sources
                       </Badge>
                     )}
                     {row.include_review_items && (
