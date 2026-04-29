@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Loader2, Eye, ListChecks } from "lucide-react";
+import { ChevronRight, Loader2, Eye } from "lucide-react";
 import { useLoadDeclaration } from "@/hooks/useDeclarationPersistence";
 import { FinalSummaryStep } from "@/components/declaration/FinalSummaryStep";
 import { LegalDisclaimer } from "@/components/layout/LegalDisclaimer";
@@ -13,12 +13,17 @@ import { DeclarationReviewStatusBadge } from "@/components/declaration/review/De
 import { ExtractionAuditPanel } from "@/components/declaration/audit/ExtractionAuditPanel";
 import { QuickReviewPanel } from "@/components/declaration/review/QuickReviewPanel";
 import { PendingReviewBanner } from "@/components/declaration/review/PendingReviewBanner";
+import { ReviewBlockingBanner } from "@/components/declaration/review/ReviewBlockingBanner";
+import { ReviewOverrideDialog } from "@/components/declaration/review/ReviewOverrideDialog";
+import { useReviewBlockingState } from "@/hooks/useReviewBlockingState";
 import { DeclarationStatusLabel } from "@/lib/declaration/schemas/declarationSchema";
 import { ExtractionStatusEnum } from "@/lib/declaration/contracts/statusContract";
+import type { DeclarationReviewStatus } from "@/lib/declaration/review/computeReviewStatus";
 
 const DeclarationDetail = () => {
   const { id } = useParams();
   const { load, loading, error, data } = useLoadDeclaration();
+  const [overrideOpen, setOverrideOpen] = useState(false);
 
   useEffect(() => {
     if (id) load(id);
@@ -29,6 +34,17 @@ const DeclarationDetail = () => {
     : null;
   const extractionStatus = parsedExtractionStatus?.success ? parsedExtractionStatus.data : null;
   const needsReview = extractionStatus === "extraction_needs_review";
+
+  const blocking = useReviewBlockingState({
+    declarationId: id ?? null,
+    reviewStatus: (data?.reviewStatus as DeclarationReviewStatus) ?? null,
+    extractionStatus,
+  });
+
+  const goToReview = () => {
+    const el = document.getElementById("quick-review");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -81,21 +97,31 @@ const DeclarationDetail = () => {
           </Card>
         )}
 
-        {!loading && data?.reviewStatus === "review_pending" && (
-          <div className="mb-6 flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => {
-                const el = document.getElementById("quick-review");
-                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-            >
-              <ListChecks className="h-4 w-4" />
-              Aller à la revue rapide
-            </Button>
-          </div>
+        {!loading && id && data && (
+          <Card className="p-5 mb-6">
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <div>
+                <h2 className="font-display text-base font-semibold text-foreground">
+                  État de validation
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  L'extraction et la revue sont tracées dans le journal d'audit.
+                </p>
+              </div>
+              {blocking.result.level === "confirmation_required" && (
+                <Button size="sm" onClick={() => setOverrideOpen(true)}>
+                  Confirmer et continuer
+                </Button>
+              )}
+            </div>
+            {blocking.result.level === "none" ? (
+              <div className="text-sm text-muted-foreground">
+                Aucun point de revue en attente. Vous pouvez finaliser sereinement.
+              </div>
+            ) : (
+              <ReviewBlockingBanner result={blocking.result} onGoToReview={goToReview} />
+            )}
+          </Card>
         )}
 
         {!loading && id && (
@@ -131,6 +157,20 @@ const DeclarationDetail = () => {
           </>
         )}
       </main>
+
+      {id && (
+        <ReviewOverrideDialog
+          open={overrideOpen}
+          onOpenChange={setOverrideOpen}
+          declarationId={id}
+          result={blocking.result}
+          context="before_finalization"
+          onConfirmed={() => {
+            blocking.reload();
+          }}
+          onGoToReview={goToReview}
+        />
+      )}
     </div>
   );
 };

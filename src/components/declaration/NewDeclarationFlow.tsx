@@ -1,9 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDeclarationFlow } from "@/hooks/useDeclarationFlow";
 import { useDeclarationDraft } from "@/hooks/useDeclarationDraft";
 import { useFinalizeDeclaration } from "@/hooks/useDeclarationPersistence";
 import { useAuth } from "@/hooks/useAuth";
+import { useDeclarationMeta } from "@/hooks/useDeclarationMeta";
+import { useReviewBlockingState } from "@/hooks/useReviewBlockingState";
+import { ReviewBlockingBanner } from "./review/ReviewBlockingBanner";
+import { ReviewOverrideDialog } from "./review/ReviewOverrideDialog";
 import { FileUploadStep } from "./FileUploadStep";
 import { ExtractionReviewStep } from "./ExtractionReviewStep";
 import { ManualValidationStep } from "./ManualValidationStep";
@@ -36,7 +40,31 @@ export const NewDeclarationFlow = () => {
     }
   }, [draftId, state.declarationId, flow]);
 
-  const handleSave = async () => {
+  // -- Verrouillage progressif avant analyse / finalisation --------------
+  const meta = useDeclarationMeta(state.declarationId);
+  const blocking = useReviewBlockingState({
+    declarationId: state.declarationId,
+    reviewStatus: meta.reviewStatus,
+    extractionStatus: meta.extractionStatus,
+  });
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<null | "to_analysis" | "save">(null);
+
+  const tryProceedToAnalysis = () => {
+    const lvl = blocking.result.level;
+    if (lvl === "blocked") {
+      toast.error(blocking.result.title);
+      return;
+    }
+    if (lvl === "confirmation_required") {
+      setPendingAction("to_analysis");
+      setOverrideOpen(true);
+      return;
+    }
+    flow.next();
+  };
+
+  const doSave = async () => {
     if (!user) {
       toast.error("Session expirée");
       return;
@@ -55,6 +83,30 @@ export const NewDeclarationFlow = () => {
       navigate(`/declaration/${state.declarationId}`);
     } else {
       toast.error("Échec de l'enregistrement");
+    }
+  };
+
+  const handleSave = async () => {
+    const lvl = blocking.result.level;
+    if (lvl === "blocked") {
+      toast.error(blocking.result.title);
+      return;
+    }
+    if (lvl === "confirmation_required") {
+      setPendingAction("save");
+      setOverrideOpen(true);
+      return;
+    }
+    await doSave();
+  };
+
+  const handleOverrideConfirmed = async () => {
+    const action = pendingAction;
+    setPendingAction(null);
+    if (action === "to_analysis") {
+      flow.next();
+    } else if (action === "save") {
+      await doSave();
     }
   };
 
@@ -116,14 +168,20 @@ export const NewDeclarationFlow = () => {
           />
         )}
         {state.step === 3 && state.extractedData && (
-          <ManualValidationStep
-            data={state.extractedData}
-            onValidated={(d) => {
-              flow.setValidatedData(d);
-              flow.next();
-            }}
-            onPrev={flow.prev}
-          />
+          <div className="space-y-4">
+            {(blocking.result.level === "warning" ||
+              blocking.result.level === "blocked") && (
+              <ReviewBlockingBanner result={blocking.result} />
+            )}
+            <ManualValidationStep
+              data={state.extractedData}
+              onValidated={(d) => {
+                flow.setValidatedData(d);
+                tryProceedToAnalysis();
+              }}
+              onPrev={flow.prev}
+            />
+          </div>
         )}
         {state.step === 4 && state.validatedData && (
           <FiscalAnalysisStep
@@ -135,14 +193,30 @@ export const NewDeclarationFlow = () => {
           />
         )}
         {state.step === 5 && state.analysis && (
-          <FinalSummaryStep
-            analysis={state.analysis}
-            onPrev={flow.prev}
-            onSave={handleSave}
-            saving={saving}
-          />
+          <div className="space-y-4">
+            {blocking.result.level !== "none" && (
+              <ReviewBlockingBanner result={blocking.result} />
+            )}
+            <FinalSummaryStep
+              analysis={state.analysis}
+              onPrev={flow.prev}
+              onSave={handleSave}
+              saving={saving || !blocking.result.canContinue}
+            />
+          </div>
         )}
       </div>
+
+      {state.declarationId && (
+        <ReviewOverrideDialog
+          open={overrideOpen}
+          onOpenChange={setOverrideOpen}
+          declarationId={state.declarationId}
+          result={blocking.result}
+          context={pendingAction === "save" ? "before_finalization" : "before_analysis"}
+          onConfirmed={handleOverrideConfirmed}
+        />
+      )}
     </div>
   );
 };
