@@ -89,7 +89,7 @@ const UNICODE_MAP: Array<[RegExp, string]> = [
   [/\u26A0\uFE0F?/g, "/!\\"],                // ⚠ → /!\
   [/[\u2705\u2713\u2714]/g, "v"],           // ✓ ✔ ✅
   [/[\u274C\u2717\u2718]/g, "x"],           // ✗ ✘ ❌
-  [/\u20AC/g, "EUR"],                        // € (kept already, but safe)
+  // €  is supported in Helvetica WinAnsi (no mapping needed)
 ];
 const sanitize = (s: unknown): string => {
   if (s === null || s === undefined) return "";
