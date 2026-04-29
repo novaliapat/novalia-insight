@@ -4,16 +4,28 @@ import type { FiscalAnalysis } from "@/lib/declaration/schemas/fiscalAnalysisSch
 
 export type FlowStep = 1 | 2 | 3 | 4 | 5;
 
+export type FileStatus = "pending" | "uploading" | "uploaded" | "failed" | "processing" | "processed";
+
 export interface UploadedFile {
+  /** id local côté client */
   id: string;
+  /** id de la ligne declaration_files (présent une fois upload réussi) */
+  dbId?: string;
   name: string;
   size: number;
   type: string;
-  file: File;
+  /** Chemin storage : {user_id}/{declaration_id}/{filename} */
+  storagePath?: string;
+  status: FileStatus;
+  errorMessage?: string;
+  /** Référence locale pour réessayer un upload échoué */
+  file?: File;
 }
 
 export interface DeclarationFlowState {
   step: FlowStep;
+  /** id de la déclaration brouillon créée au démarrage */
+  declarationId: string | null;
   files: UploadedFile[];
   extractedData: ExtractedData | null;
   validatedData: ExtractedData | null;
@@ -22,6 +34,7 @@ export interface DeclarationFlowState {
 
 const initialState: DeclarationFlowState = {
   step: 1,
+  declarationId: null,
   files: [],
   extractedData: null,
   validatedData: null,
@@ -41,9 +54,22 @@ export function useDeclarationFlow() {
     []
   );
 
+  const setDeclarationId = useCallback(
+    (id: string) => setState((s) => ({ ...s, declarationId: id })),
+    []
+  );
+
   const setFiles = useCallback((files: UploadedFile[]) => setState((s) => ({ ...s, files })), []);
   const addFiles = useCallback(
     (newFiles: UploadedFile[]) => setState((s) => ({ ...s, files: [...s.files, ...newFiles] })),
+    []
+  );
+  const updateFile = useCallback(
+    (id: string, patch: Partial<UploadedFile>) =>
+      setState((s) => ({
+        ...s,
+        files: s.files.map((f) => (f.id === id ? { ...f, ...patch } : f)),
+      })),
     []
   );
   const removeFile = useCallback(
@@ -71,8 +97,10 @@ export function useDeclarationFlow() {
     goTo,
     next,
     prev,
+    setDeclarationId,
     setFiles,
     addFiles,
+    updateFile,
     removeFile,
     setExtractedData,
     setValidatedData,
