@@ -695,6 +695,81 @@ export const BROCHURE_IR_2025_SEED: BrochureSeedChunk[] = [
   }),
 
   base({
+    category: "scpi",
+    title: "SCPI — Intérêts d'emprunt personnels : cascade 3 niveaux",
+    pageNumber: 154,
+    formId: "2044",
+    sectionLabel: "Ventilation intérêts — méthode CGP",
+    boxCodes: ["Ligne 113", "Ligne 250"],
+    excerpt:
+      "Les intérêts d'emprunt personnels se ventilent en CASCADE : inter-SCPI (prorata invest), " +
+      "puis géographique (clé gestionnaire), puis bucket CI vs taux effectif.",
+    content:
+      "VENTILATION EN CASCADE DES INTÉRÊTS D'EMPRUNT PERSONNELS. " +
+      "I_total (attestation bancaire) → Niveau 1 : répartition inter-SCPI au prorata de " +
+      "l'investissement initial (nb_parts × prix_unitaire_à_date_déblocage). Si un seul crédit " +
+      "ne finance qu'une SCPI, q1 = 100%. Si multi-SCPI, ventiler au prorata et demander " +
+      "confirmation. Contrôle : somme investissements ≈ nominal crédit (±5%). " +
+      "Niveau 2 : appliquer la clé géographique du relevé fiscal de l'année. " +
+      "Niveau 3 : séparer en bucket CI (France, Allemagne, RU, Espagne, Italie → ligne 113 " +
+      "de la 2044) et bucket TE (Belgique, Pays-Bas, Irlande → vient en déduction de 4EA).",
+    keywords: ["intérêts d'emprunt", "ventilation", "cascade", "inter-SCPI", "prorata",
+      "crédit d'impôt", "taux effectif", "bucket CI", "bucket TE", "clé géographique"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "Règle 8TK vs 4BL — BRUT vs NET",
+    pageNumber: 115,
+    formId: "2042",
+    sectionLabel: "Crédit d'impôt revenus étrangers",
+    boxCodes: ["8TK", "4BL"],
+    excerpt:
+      "8TK = BRUT pré-rempli (non modifiable). 4BL = NET après intérêts perso (modifiable). " +
+      "Quand il y a un emprunt, 4BL < 8TK — c'est normal.",
+    content:
+      "RÈGLE CRITIQUE 8TK vs 4BL. 8TK : case pré-remplie NON MODIFIABLE, reprend les montants " +
+      "BRUTS de la section 6 de la 2047. 4BL : case MODIFIABLE, résultat NET (ligne 114 après " +
+      "déduction des intérêts personnels). Quand il y a un emprunt, 4BL < 8TK et c'est NORMAL. " +
+      "NE JAMAIS signaler d'incohérence entre 4BL et 8TK quand il y a un emprunt personnel.",
+    keywords: ["8TK", "4BL", "brut", "net", "pré-rempli", "crédit d'impôt"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "Plafond ligne 114 — Pas de déficit foncier étranger",
+    pageNumber: 154,
+    formId: "2044",
+    sectionLabel: "Déficit foncier étranger",
+    boxCodes: ["Ligne 114"],
+    excerpt:
+      "La ligne 114 ne peut PAS être négative pour la part étrangère. Reporter zéro le cas échéant.",
+    content:
+      "PLAFOND DÉFICIT FONCIER ÉTRANGER. Si le calcul 111 - 112 - 113 donne un résultat négatif " +
+      "sur la part étrangère, reporter ZÉRO en ligne 114. Le différentiel est PERDU et non reportable. " +
+      "Cela arrive quand les intérêts d'emprunt personnels ventilés dépassent les revenus nets étrangers.",
+    keywords: ["déficit foncier", "étranger", "plafond", "ligne 114", "zéro", "SCPI"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "Architecture 2044 — Pas de sous-colonnes France/Étrangère",
+    pageNumber: 154,
+    formId: "2044",
+    sectionLabel: "Structure du formulaire",
+    boxCodes: [],
+    excerpt:
+      "Le formulaire 2044 n'a AUCUNE sous-ligne France/Étrangère par immeuble. " +
+      "Si le bordereau SCPI en a, SOMMER avant saisie.",
+    content:
+      "ARCHITECTURE 2044. Le formulaire en ligne n'a aucune sous-ligne France/Étrangère. " +
+      "Deux architectures légitimes : ARCHI-A (pays regroupés, un immeuble par SCPI) ou " +
+      "ARCHI-B (un immeuble par pays au sein de la même SCPI). Dans les deux cas : " +
+      "UN SEUL chiffre par ligne 111/112/113/114.",
+    keywords: ["2044", "architecture", "colonnes", "immeuble", "SCPI", "sommer"],
+  }),
+
+  base({
     category: "deductible_expenses",
     title: "2044 ligne 250 — Intérêts d'emprunt déductibles",
     pageNumber: 154,
