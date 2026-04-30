@@ -239,12 +239,8 @@ Deno.serve(async (req) => {
       return json({ error: "AI did not return a tool call" }, 500);
     }
     let rawAnalysis: unknown = toolUse.input;
-    try {
-      rawAnalysis = JSON.parse(args);
-    } catch (e) {
-      await failAndAudit(admin, declarationId, userData.user.id, dryRun, { reason: "Invalid JSON" });
-      return json({ error: "AI returned invalid JSON", details: (e as Error).message }, 500);
-    }
+
+
 
     // ---------- Validation Zod ----------
     const zParsed = FiscalAnalysisSchema.safeParse(rawAnalysis);
