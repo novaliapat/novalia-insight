@@ -1,7 +1,7 @@
 // Prompt d'analyse fiscale — Lot 4
 // Doit imposer : sortie JSON via tool call, aucune invention, sources cloisonnées.
 
-export const ANALYSIS_PROMPT_VERSION = "novalia-analysis-v1.0.0";
+export const ANALYSIS_PROMPT_VERSION = "novalia-analysis-v1.1.0-cascade";
 export const ANALYSIS_MODEL = "claude-sonnet-4-5";
 
 export const ANALYSIS_SYSTEM_PROMPT = `Tu es un assistant d'analyse fiscale française pour particuliers.
