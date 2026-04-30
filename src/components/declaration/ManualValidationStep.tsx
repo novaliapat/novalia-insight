@@ -61,7 +61,8 @@ type SCPIConfidentField =
     if (Number.isNaN(num)) return;
     setDraft((d) => {
       const next = structuredClone(d);
-      next.scpi[idx].ifiValuePerShare = { value: num, confidence: next.scpi[idx].ifiValuePerShare?.confidence ?? "medium" } as typeof next.scpi[idx].ifiValuePerShare;
+      const prev = next.scpi[idx].ifiValuePerShare;
+      next.scpi[idx].ifiValuePerShare = { value: num, confidence: prev?.confidence ?? "medium" };
       return next;
     });
   };
