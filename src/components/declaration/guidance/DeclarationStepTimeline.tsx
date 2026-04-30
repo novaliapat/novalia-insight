@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ChevronRight, Calculator } from "lucide-react";
+import { AlertTriangle, ChevronRight, Calculator, Lock, CheckCircle2 } from "lucide-react";
 import { formatEuro } from "@/lib/declaration/utils/taxFormatting";
 import type {
   DeclarationStep,
