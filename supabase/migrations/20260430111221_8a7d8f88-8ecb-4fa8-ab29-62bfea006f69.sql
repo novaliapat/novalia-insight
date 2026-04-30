@@ -1,0 +1,1 @@
+ALTER TABLE public.declaration_guidance ADD CONSTRAINT declaration_guidance_declaration_id_key UNIQUE (declaration_id);
