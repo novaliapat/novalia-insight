@@ -29,13 +29,61 @@ export const ManualValidationStep = ({ data, onValidated, onPrev }: Props) => {
     });
   };
 
-  const updateSCPI = (idx: number, field: "frenchIncome" | "foreignIncome", value: string) => {
+type SCPIConfidentField =
+  | "frenchIncome"
+  | "foreignIncome"
+  | "grossIncome"
+  | "expenses"
+  | "scpiLoanInterests"
+  | "netIncome"
+  | "exemptIncome"
+  | "foreignTaxCredit"
+  | "rcmInterests"
+  | "rcmCsgDeductible"
+  | "rcmWithholdingTax"
+  | "capitalGains"
+  | "numberOfShares";
+
+  const updateSCPI = (idx: number, field: SCPIConfidentField, value: string) => {
     const num = value === "" ? 0 : Number(value);
     if (Number.isNaN(num)) return;
     setDraft((d) => {
       const next = structuredClone(d);
-      const entry = next.scpi[idx];
-      if (entry[field]) entry[field]!.value = num;
+      const entry = next.scpi[idx] as Record<string, { value: number } | undefined> & typeof next.scpi[number];
+      const f = (entry as Record<string, { value: number } | undefined>)[field];
+      if (f) f.value = num;
+      return next;
+    });
+  };
+
+  const updateSCPIIfi = (idx: number, value: string) => {
+    const num = value === "" ? 0 : Number(value);
+    if (Number.isNaN(num)) return;
+    setDraft((d) => {
+      const next = structuredClone(d);
+      next.scpi[idx].ifiValuePerShare = { value: num, confidence: next.scpi[idx].ifiValuePerShare?.confidence ?? "medium" } as typeof next.scpi[idx].ifiValuePerShare;
+      return next;
+    });
+  };
+
+  const updateLoan = (idx: number, field: "bank" | "annualInterests" | "principal", value: string) => {
+    setDraft((d) => {
+      const next = structuredClone(d);
+      const loans = next.loans ?? [];
+      const entry = loans[idx];
+      if (!entry) return next;
+      if (field === "bank") {
+        entry.bank = value;
+      } else {
+        const num = value === "" ? 0 : Number(value);
+        if (Number.isNaN(num)) return next;
+        if (field === "annualInterests") {
+          entry.annualInterests.value = num;
+        } else if (field === "principal" && entry.principal) {
+          entry.principal.value = num;
+        }
+      }
+      next.loans = loans;
       return next;
     });
   };
