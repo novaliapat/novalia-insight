@@ -192,6 +192,9 @@ Deno.serve(async (req) => {
       ragByCategory,
     });
 
+    // Post-processing : arrondi CGI art. 193 — tous les "amount" en entiers
+    built.guidance = roundAllAmounts(built.guidance);
+
     // Validation Zod finale
     const validatedGuidance = DeclarationGuidanceSchema.safeParse(built.guidance);
     if (!validatedGuidance.success) {
