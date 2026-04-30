@@ -151,7 +151,7 @@ export const SCPIEntrySchema = z.object({
   foreignTaxCredit: ConfidentNumberSchema.optional(),    // 8TK
 
   // Ventilation par pays
-  incomeByCountry: z.array(SCPICountryIncomeSchema).default([]),
+  incomeByCountry: z.array(SCPICountryIncomeSchema).optional().default([]),
 
   // Prélèvements sociaux
   socialContributions: ConfidentNumberSchema.optional(),
