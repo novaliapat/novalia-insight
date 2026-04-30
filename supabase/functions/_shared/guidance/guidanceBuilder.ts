@@ -691,6 +691,58 @@ function buildManualReviewItems(d: ExtractedData): ManualReviewItem[] {
     });
   }
 
+  // ── Cascade emprunts personnels : edge cases ──────────────────────
+  const allocation = allocatePersonalLoanInterests(d.loans, d.scpi);
+  for (const a of allocation.perScpi) {
+    if (a.missingGeoKey && a.totalPersonalInterests > 0) {
+      items.push({
+        id: `scpi-missing-geo-key-${a.scpiName}`,
+        category: "scpi",
+        reason: `Clé de ventilation géographique manquante pour ${a.scpiName} : intérêts personnels (${Math.round(a.totalPersonalInterests)} €) reportés intégralement en bucket CI par prudence.`,
+        suggestedAction: `Contacter la société de gestion pour obtenir la répartition pays par pays de ${a.scpiName}.`,
+        relatedFormId: "2044",
+        relatedBox: "Ligne 113",
+      });
+    }
+  }
+  for (const u of allocation.unlinkedLoans) {
+    items.push({
+      id: `loan-unlinked-${u.bank}`,
+      category: "deductible_expenses",
+      reason: `Le lien entre le crédit ${u.bank} (${Math.round(u.amount)} €) et la/les SCPI n'est pas identifié.`,
+      suggestedAction: "Vérification manuelle indispensable : confirmer à quelle(s) SCPI ce crédit est rattaché.",
+      relatedFormId: "2044",
+      relatedBox: "Ligne 113",
+    });
+  }
+  // Plafonnement déficit foncier étranger / 4EA
+  const scpiGrossSum = sumOpt(...(d.scpi ?? []).map((s) => s.grossIncome?.value));
+  const scpiExpensesSum = sumOpt(...(d.scpi ?? []).map((s) => s.expenses?.value));
+  const scpiOwnInt = sumOpt(...(d.scpi ?? []).map((s) => s.scpiLoanInterests?.value));
+  const totalLine113Calc = scpiOwnInt + allocation.totalCi;
+  const rawNet = scpiGrossSum - scpiExpensesSum - totalLine113Calc;
+  if (scpiGrossSum > 0 && rawNet < 0) {
+    items.push({
+      id: "scpi-foreign-deficit-capped",
+      category: "scpi",
+      reason: `Déficit foncier étranger plafonné à 0 — ${Math.abs(rawNet)} € d'intérêts personnels excèdent les revenus.`,
+      suggestedAction: "Vérifier qu'aucun report de déficit n'est applicable (déficit étranger non imputable sur revenu global).",
+      relatedFormId: "2044",
+      relatedBox: "Ligne 114",
+    });
+  }
+  const exemptSum = sumOpt(...(d.scpi ?? []).map((s) => s.exemptIncome?.value));
+  if (allocation.totalTe > exemptSum && exemptSum > 0) {
+    items.push({
+      id: "scpi-te-bucket-capped",
+      category: "scpi",
+      reason: `Intérêts bucket taux effectif (${allocation.totalTe} €) excèdent les revenus exonérés (${exemptSum} €) — ${allocation.totalTe - exemptSum} € perdus, 4EA plafonnée à 0.`,
+      suggestedAction: "Aucune action : ces intérêts ne peuvent être déduits du revenu mondial taux effectif.",
+      relatedFormId: "2042",
+      relatedBox: "4EA",
+    });
+  }
+
   const ifuSocial = sumOpt(...(d.ifu ?? []).map((i) => i.socialContributions?.value));
   if (ifuSocial > 0) {
     items.push({
