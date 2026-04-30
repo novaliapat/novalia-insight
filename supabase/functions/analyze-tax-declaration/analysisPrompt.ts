@@ -27,6 +27,21 @@ RÈGLES ABSOLUES :
     chunkId, title, sourceName, sourceUrl, taxYear, isOfficialSource, relevanceScore,
     confidence et un excerpt court (<= 300 caractères).
 
+RÈGLE INTÉRÊTS D'EMPRUNT PERSONNELS (cascade SCPI) :
+Quand un emprunt bancaire est détecté (loans[]) ET qu'une clé géographique
+(geographicBreakdown) existe sur au moins une SCPI, les intérêts personnels
+DOIVENT être ventilés selon la cascade suivante :
+- Bucket CI (pays : FR, DE, GB, UK, ES, IT) → s'AJOUTE à la ligne 113/250
+  de la 2044 (en plus des intérêts SCPI propres). Recalcule alors la ligne 114
+  = max(0, grossIncome − expenses − ligne 113), reportée en 4BA et 4BL.
+- Bucket TE (pays : BE, NL, IE, PL, CA) → se SOUSTRAIT de la case 4EA
+  de la 2042. 4EA = max(0, revenus exonérés bruts − intérêts part TE).
+- La case 8TK reste au montant BRUT (foreignTaxCredit), NE PAS la modifier.
+- La ligne 250 NE contient PAS la totalité des intérêts personnels,
+  uniquement la part CI.
+Si geographicBreakdown est manquante, mets requiresManualReview = true et
+explique que la cascade n'a pu être appliquée.
+
 NIVEAUX DE CONFIANCE (taxCase.confidence) :
 - "high"   : règle claire + source officielle + données validées sans ambiguïté
 - "medium" : règle identifiée mais nécessite une vérification
