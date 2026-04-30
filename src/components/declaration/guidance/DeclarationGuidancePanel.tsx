@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +10,10 @@ import {
   RefreshCw,
   Sparkles,
   AlertTriangle,
+  Building2,
 } from "lucide-react";
 import { useDeclarationGuidance } from "@/hooks/useDeclarationGuidance";
+import { supabase } from "@/integrations/supabase/client";
 import { GuidanceConfidenceBadge } from "./GuidanceConfidenceBadge";
 import { GuidanceSourceBadge } from "./GuidanceSourceBadge";
 import { RequiredFormsPanel } from "./RequiredFormsPanel";
@@ -23,6 +25,12 @@ import type {
   DeclarationGuidance,
   FormSource,
 } from "@/lib/declaration/guidance/guidanceSchemas";
+
+interface ScpiInfo {
+  scpiName: string;
+  address?: string;
+  numberOfShares?: number;
+}
 
 interface Props {
   declarationId: string | null | undefined;
