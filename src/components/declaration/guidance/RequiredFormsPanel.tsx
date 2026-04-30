@@ -31,6 +31,14 @@ const FORM_DISPLAY: Record<TaxFormId, { title: string; subtitle: string }> = {
     title: "Annexe 2047 — Revenus de source étrangère",
     subtitle: "À ouvrir si vos SCPI ou comptes distribuent des revenus étrangers.",
   },
+  preparation: {
+    title: "Étapes préalables",
+    subtitle: "Rubriques à cocher au début du parcours sur impots.gouv.fr.",
+  },
+  recap: {
+    title: "Récapitulatif et vérifications",
+    subtitle: "Tableau de synthèse de toutes les cases et checklist finale.",
+  },
   other: {
     title: "Formulaire complémentaire",
     subtitle: "À ouvrir selon la situation détectée.",

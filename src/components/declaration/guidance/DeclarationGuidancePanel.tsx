@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   BookOpenCheck,
   Compass,
@@ -174,27 +175,136 @@ export const DeclarationGuidancePanel = ({
             <RequiredFormsPanel forms={guidance.requiredForms} />
           </Section>
 
-          {/* 2. Timeline */}
+          {/* 2. Parcours pas-à-pas — onglets par formulaire */}
           <Section title="Parcours pas-à-pas">
-            <DeclarationStepTimeline steps={guidance.declarationSteps} />
-          </Section>
+            {(() => {
+              const steps = guidance.declarationSteps;
+              const stepsByForm = {
+                preparation: steps.filter((s) => s.formId === "preparation"),
+                "2044": steps.filter((s) => s.formId === "2044"),
+                "2047": steps.filter((s) => s.formId === "2047"),
+                "2042": steps.filter(
+                  (s) => s.formId === "2042" || s.formId === "2042C" || s.formId === "2042-RICI",
+                ),
+                recap: steps.filter((s) => s.formId === "recap"),
+              };
+              const proposalsByForm = {
+                "2044": guidance.taxBoxProposals.filter((p) => p.formId === "2044"),
+                "2047": guidance.taxBoxProposals.filter((p) => p.formId === "2047"),
+                "2042": guidance.taxBoxProposals.filter(
+                  (p) => p.formId === "2042" || p.formId === "2042C" || p.formId === "2042-RICI",
+                ),
+              };
 
-          {/* 3. Cases proposées */}
-          <Section
-            title="Cases et lignes proposées"
-            badge={guidance.taxBoxProposals.length}
-          >
-            {guidance.taxBoxProposals.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aucune case proposée — données insuffisantes ou sources manquantes.
-              </p>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                {guidance.taxBoxProposals.map((p, i) => (
-                  <TaxBoxProposalCard key={`${p.formId}-${p.boxOrLine}-${i}`} proposal={p} />
-                ))}
-              </div>
-            )}
+              return (
+                <Tabs defaultValue="preparation" className="w-full">
+                  <TabsList className="w-full grid grid-cols-5">
+                    <TabsTrigger value="preparation">
+                      1. Préparation
+                      {stepsByForm.preparation.length > 0 && (
+                        <Badge variant="secondary" className="ml-2 h-5 text-[10px]">
+                          {stepsByForm.preparation.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="2044">
+                      2. 2044
+                      {stepsByForm["2044"].length > 0 && (
+                        <Badge variant="secondary" className="ml-2 h-5 text-[10px]">
+                          {stepsByForm["2044"].length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="2047">
+                      3. 2047
+                      {stepsByForm["2047"].length > 0 && (
+                        <Badge variant="secondary" className="ml-2 h-5 text-[10px]">
+                          {stepsByForm["2047"].length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="2042">
+                      4. 2042
+                      {stepsByForm["2042"].length > 0 && (
+                        <Badge variant="secondary" className="ml-2 h-5 text-[10px]">
+                          {stepsByForm["2042"].length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="recap">
+                      5. Récap.
+                      {stepsByForm.recap.length > 0 && (
+                        <Badge variant="secondary" className="ml-2 h-5 text-[10px]">
+                          {stepsByForm.recap.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="preparation" className="mt-4">
+                    {stepsByForm.preparation.length > 0 ? (
+                      <DeclarationStepTimeline steps={stepsByForm.preparation} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground p-4">
+                        Aucune étape préalable identifiée.
+                      </p>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="2044" className="mt-4 space-y-4">
+                    {stepsByForm["2044"].length > 0 ? (
+                      <DeclarationStepTimeline steps={stepsByForm["2044"]} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground p-4">
+                        Pas d'annexe 2044 requise pour cette déclaration.
+                      </p>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="2047" className="mt-4 space-y-4">
+                    {stepsByForm["2047"].length > 0 ? (
+                      <DeclarationStepTimeline steps={stepsByForm["2047"]} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground p-4">
+                        Pas d'annexe 2047 requise (aucun revenu étranger détecté).
+                      </p>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="2042" className="mt-4 space-y-4">
+                    {stepsByForm["2042"].length > 0 ? (
+                      <DeclarationStepTimeline steps={stepsByForm["2042"]} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground p-4">
+                        Aucune case 2042 à compléter.
+                      </p>
+                    )}
+                    {proposalsByForm["2042"].length > 0 && (
+                      <div className="space-y-2">
+                        <h5 className="font-display text-sm font-semibold text-muted-foreground">
+                          Détail des cases proposées
+                        </h5>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          {proposalsByForm["2042"].map((p, i) => (
+                            <TaxBoxProposalCard key={`${p.formId}-${p.boxOrLine}-${i}`} proposal={p} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="recap" className="mt-4">
+                    {stepsByForm.recap.length > 0 ? (
+                      <DeclarationStepTimeline steps={stepsByForm.recap} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground p-4">
+                        Récapitulatif indisponible.
+                      </p>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              );
+            })()}
           </Section>
 
           {/* 4. Revue manuelle */}

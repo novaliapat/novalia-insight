@@ -9,15 +9,28 @@ import { z } from "zod";
 import { TaxCategoryEnum, ConfidenceLevelEnum } from "@/lib/declaration/contracts/extractedDataContract";
 
 // Identifiants formulaires couverts en V1
+// "preparation" : étapes préalables (rubriques à cocher sur impots.gouv.fr)
+// "recap"       : tableau récapitulatif + checklist finale
 export const TaxFormIdEnum = z.enum([
+  "preparation",
   "2042",
   "2042C",
   "2042-RICI",
   "2044",
   "2047",
+  "recap",
   "other",
 ]);
 export type TaxFormId = z.infer<typeof TaxFormIdEnum>;
+
+// Statut de pré-remplissage d'une case sur impots.gouv.fr
+export const PrefillStatusEnum = z.enum([
+  "to_enter",
+  "prefilled",
+  "auto_report",
+  "do_not_modify",
+]);
+export type PrefillStatus = z.infer<typeof PrefillStatusEnum>;
 
 // Statut d'une entrée catalogue (formulaire / case / annexe)
 export const CatalogStatusEnum = z.enum([
@@ -124,6 +137,8 @@ export const DeclarationStepSchema = z.object({
   ragSources: z.array(FormSourceSchema).default([]),
   warning: z.string().optional(),
   requiresManualReview: z.boolean().default(false),
+  calculationNote: z.string().optional(),
+  prefillStatus: PrefillStatusEnum.optional(),
 });
 export type DeclarationStep = z.infer<typeof DeclarationStepSchema>;
 

@@ -230,11 +230,11 @@ const formatAmount = (v: unknown): string => {
   if (v === null || v === undefined || v === "") return "—";
   const n = typeof v === "number" ? v : Number(v);
   if (Number.isNaN(n)) return String(v);
-  // Formatage manuel pour éviter les caractères non-WinAnsi de Intl (NNBSP, €)
-  const parts = Math.abs(n).toFixed(2).split(".");
-  const int = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  const sign = n < 0 ? "-" : "";
-  return `${sign}${int},${parts[1]} EUR`;
+  // Arrondi entier (CGI art. 193) — pas de décimales sur les montants déclarés
+  const rounded = Math.round(n);
+  const sign = rounded < 0 ? "-" : "";
+  const int = String(Math.abs(rounded)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${sign}${int} EUR`;
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
