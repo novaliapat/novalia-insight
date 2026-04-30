@@ -519,6 +519,10 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
       key("2042", "8TK"),
       `Case pré-remplie par l'administration (${Math.round(scpiForeign)} € attendus selon le relevé ${primaryScpiName}). Ne modifiez pas ce montant.`,
     );
+    reviewHints.set(
+      key("2042", "4BL"),
+      `Revenus étrangers détectés (${Math.round(scpiForeign)} €) — vérifiez la convention bilatérale avant de reporter le bénéfice net en 4BL.`,
+    );
   }
 
   const adjusted4EA = Math.max(0, Math.round(exemptIncomeRaw) - personalTe);
