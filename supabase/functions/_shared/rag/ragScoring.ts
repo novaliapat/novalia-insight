@@ -22,8 +22,8 @@ export interface RagScoringOutput {
   warnings: string[];
 }
 
-const HIGH_THRESHOLD = 0.75;
-const MED_THRESHOLD = 0.55;
+const HIGH_THRESHOLD = 0.30;
+const MED_THRESHOLD = 0.15;
 
 const normalizeWord = (w: string) =>
   w
