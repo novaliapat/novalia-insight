@@ -65,18 +65,18 @@ export function buildDeclarationSteps(input: BuildStepsInput): DeclarationStep[]
   );
 
   const prepInstructions: string[] = [];
-  if (hasMobilier) prepInstructions.push("Cocher « Revenus de capitaux mobiliers » (cases 2TR, 2DC, 2CK, 2CG).");
-  if (has2044) prepInstructions.push("Cocher « Revenus fonciers » → sélectionner uniquement « Annexe n°2044 » (régime réel SCPI).");
-  if (has3VZ) prepInstructions.push("Cocher « Plus-values et gains divers » → ligne 3VZ (plus-values pré-remplies).");
-  if (has2047) prepInstructions.push("Cocher « Comptes à l'étranger, Revenus de source étrangère » → sélectionner « Annexe n°2047 ».");
-  prepInstructions.push("NE PAS sélectionner les annexes 2074, 2086 ou autres si non concernées.");
+  if (hasMobilier) prepInstructions.push("✅ Cochez « Revenus de capitaux mobiliers » (cases 2TR, 2DC, 2CK, 2CG)");
+  if (has2044) prepInstructions.push("✅ Cochez « Revenus fonciers » → puis sélectionnez « Annexe n°2044 » (régime réel SCPI)");
+  if (has3VZ) prepInstructions.push("✅ Cochez « Plus-values et gains divers » → ligne 3VZ");
+  if (has2047) prepInstructions.push("✅ Cochez « Comptes à l'étranger, Revenus de source étrangère » → puis « Annexe n°2047 »");
+  prepInstructions.push("⛔ NE cochez PAS les annexes 2074 ou 2086 si elles ne sont pas listées ci-dessus.");
 
   if (prepInstructions.length > 0) {
     steps.push({
       id: "prep-rubriques",
       order: order++,
-      title: "Sélectionner les rubriques sur impots.gouv.fr",
-      description: prepInstructions.join("\n"),
+      title: "Étape 1 — Sélectionner vos rubriques sur impots.gouv.fr",
+      description: "À l'étape « Sélection des rubriques » :\n" + prepInstructions.join("\n"),
       formId: "preparation",
       actionType: "check_box",
       ragSources: [],
@@ -133,22 +133,22 @@ export function buildDeclarationSteps(input: BuildStepsInput): DeclarationStep[]
 
   // ─── BLOC 5 — RÉCAPITULATIF ───────────────────────────────────────
   if (input.proposals.length > 0) {
+    const statusLabel: Record<PrefillStatus, string> = {
+      to_enter: "À saisir par vous",
+      prefilled: "Pré-rempli, vérifiez",
+      auto_report: "Reporté automatiquement",
+      do_not_modify: "⚠️ Ne pas modifier",
+    };
     const lines = input.proposals.map((p) => {
       const status = computePrefillStatus(p.formId, p.boxOrLine);
-      const statusLabel: Record<PrefillStatus, string> = {
-        to_enter: "À saisir",
-        prefilled: "Pré-rempli (vérifier)",
-        auto_report: "Report automatique",
-        do_not_modify: "Ne pas modifier",
-      };
       const amt = p.amount != null ? `${Math.round(p.amount)} €` : "—";
-      return `${p.formId} • ${p.boxOrLine} — ${p.label} : ${amt} (${statusLabel[status]})`;
+      return `${p.formId} case ${p.boxOrLine} : ${amt} — ${statusLabel[status]}`;
     });
 
     steps.push({
       id: "recap-table",
       order: order++,
-      title: "Tableau récapitulatif des cases",
+      title: "Tableau récapitulatif — toutes vos cases",
       description: lines.join("\n"),
       formId: "recap",
       actionType: "verify_amount",
@@ -156,17 +156,36 @@ export function buildDeclarationSteps(input: BuildStepsInput): DeclarationStep[]
       requiresManualReview: false,
     });
 
+    // Valeurs clés pour la checklist
+    const get = (formId: string, box: string): number | null => {
+      const p = input.proposals.find((x) => x.formId === formId && x.boxOrLine === box);
+      return p?.amount != null ? Math.round(p.amount) : null;
+    };
+    const line250 = get("2044", "Ligne 250");
+    const tk8 = get("2042", "8TK");
+    const bl4 = get("2042", "4BL");
+    const ea4 = get("2042", "4EA");
+
+    const checks: string[] = [];
+    if (line250 != null) {
+      checks.push(`✅ Vérifiez que le total des intérêts déclarés (${line250} €) correspond bien à votre attestation bancaire.`);
+    }
+    if (tk8 != null) {
+      checks.push(`✅ La case 8TK (${tk8} €) est pré-remplie : ne la modifiez pas.`);
+    }
+    if (bl4 != null && tk8 != null) {
+      checks.push(`✅ Normal : la case 4BL (${bl4} €) est inférieure à 8TK (${tk8} €) car vous avez un emprunt.`);
+    }
+    if (ea4 != null) {
+      checks.push(`✅ La case 4EA (${ea4} €) reflète vos revenus exonérés après déduction des intérêts « taux effectif ».`);
+    }
+    checks.push("✅ Conservez tous vos justificatifs : relevés fiscaux SCPI, attestations bancaires, IFU.");
+
     steps.push({
       id: "recap-checklist",
       order: order++,
       title: "Checklist de validation finale",
-      description: [
-        "Σ intérêts d'emprunt répartis = total des attestations bancaires.",
-        "Ligne 114 (résultat 2044) non négative sur la part étrangère.",
-        "8TK reste pré-remplie et non modifiée (égale au total section 6 de la 2047).",
-        "4BL ≤ 8TK si emprunt personnel (le NET ne peut excéder le BRUT).",
-        "Toutes les pièces justificatives (relevés SCPI, attestations bancaires, IFU) sont conservées.",
-      ].join("\n"),
+      description: checks.join("\n"),
       formId: "recap",
       actionType: "verify_amount",
       ragSources: [],

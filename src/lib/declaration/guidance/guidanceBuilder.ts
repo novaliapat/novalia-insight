@@ -468,39 +468,42 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
 
   // Cascade de ventilation des intérêts personnels (Arkéa & co)
   const allocation = allocatePersonalLoanInterests(loans, scpi);
-  const personalCi = allocation.totalCi;
-  const personalTe = allocation.totalTe;
-  const personalTotal = allocation.totalPersonal;
+  const personalCi = Math.round(allocation.totalCi);
+  const personalTe = Math.round(allocation.totalTe);
+  const personalTotal = Math.round(allocation.totalPersonal);
   const fallbackPersonal = personalTotal === 0
-    ? sumOpt(...loans.map((l) => l.annualInterests?.value))
+    ? Math.round(sumOpt(...loans.map((l) => l.annualInterests?.value)))
     : 0;
+  const primaryBank = (loans.find((l) => (l.annualInterests?.value ?? 0) > 0)?.bank) ?? "votre emprunt";
+  const primaryScpiName = scpi[0]?.scpiName ?? "votre SCPI";
 
   // Ligne 113 (= ligne 250 sur 2044) : intérêts SCPI + part CI des emprunts perso
-  const totalLine113 = scpiOwnInterests + personalCi + fallbackPersonal > 0
-    ? scpiOwnInterests + personalCi + fallbackPersonal
-    : legacyInterests;
+  const totalLine113 = Math.round(
+    scpiOwnInterests + personalCi + fallbackPersonal > 0
+      ? scpiOwnInterests + personalCi + fallbackPersonal
+      : legacyInterests,
+  );
 
   if (scpiFr > 0) {
-    amount.set(key("2044", "Ligne 211"), scpiFr);
+    amount.set(key("2044", "Ligne 211"), Math.round(scpiFr));
   }
 
   // Ligne 114 / 420 : recalcul du résultat NET après cascade
   const computedNet = scpiGross > 0
     ? Math.max(0, scpiGross - scpiExpenses - totalLine113)
     : 0;
-  const netForLine420 = computedNet > 0
+  const netForLine420 = Math.round(computedNet > 0
     ? computedNet
-    : (scpiNet !== 0 ? scpiNet : 0);
+    : (scpiNet !== 0 ? scpiNet : 0));
 
   if (netForLine420 !== 0) {
     amount.set(key("2044", "Ligne 420"), netForLine420);
     if (netForLine420 > 0) {
       amount.set(key("2042", "4BA"), netForLine420);
-      // 4BL = résultat NET (≠ 8TK qui reste BRUT pré-rempli)
       amount.set(key("2042", "4BL"), netForLine420);
       reviewHints.set(
         key("2042", "4BL"),
-        `Résultat NET après intérêts personnels (${netForLine420} €). ≠ 8TK (${foreignTaxCredit} € brut pré-rempli, ne pas modifier).`,
+        `${netForLine420} € (résultat net 2044 ligne 114) = même montant que 4BA. C'est normal que 4BL soit inférieur à 8TK (${Math.round(foreignTaxCredit)} €) quand vous avez un emprunt.`,
       );
     } else {
       amount.set(key("2042", "4BC"), Math.abs(netForLine420));
@@ -508,29 +511,33 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
   } else if (scpiFr > 0) {
     reviewHints.set(
       key("2042", "4BA"),
-      "Report depuis la ligne 420 de la 2044 (résultat foncier net après charges et intérêts d'emprunt). Ne pas y reporter directement les recettes brutes SCPI.",
+      "Reporté automatiquement depuis la ligne 114/420 de la 2044. Vérifiez que le montant correspond.",
     );
   }
 
   // 8TK : crédit d'impôt étranger BRUT inchangé
   if (foreignTaxCredit > 0) {
-    amount.set(key("2042", "8TK"), foreignTaxCredit);
+    amount.set(key("2042", "8TK"), Math.round(foreignTaxCredit));
   } else if (scpiForeign > 0) {
     reviewHints.set(
       key("2042", "8TK"),
-      `Revenus étrangers (${scpiForeign.toFixed(2)} €) ouvrant droit à crédit d'impôt = IR français : à reporter en 8TK selon la convention. Vérifier impérativement la convention bilatérale.`,
+      `Case pré-remplie par l'administration (${Math.round(scpiForeign)} € attendus selon le relevé ${primaryScpiName}). Ne modifiez pas ce montant.`,
+    );
+    reviewHints.set(
+      key("2042", "4BL"),
+      `Revenus étrangers détectés (${Math.round(scpiForeign)} €) — vérifiez la convention bilatérale avant de reporter le bénéfice net en 4BL.`,
     );
   }
 
   // 4EA : revenus exonérés MOINS intérêts personnels bucket TE
-  const adjusted4EA = Math.max(0, exemptIncomeRaw - personalTe);
+  const adjusted4EA = Math.max(0, Math.round(exemptIncomeRaw) - personalTe);
   if (exemptIncomeRaw > 0) {
     amount.set(key("2042", "4EA"), adjusted4EA);
     if (personalTe > 0) {
-      const teBreak = formatBucketBreakdown(allocation.perScpi, "TE");
+      const tePct = personalTotal > 0 ? (personalTe / personalTotal * 100) : 0;
       reviewHints.set(
         key("2042", "4EA"),
-        `Revenus exonérés bruts (${exemptIncomeRaw} €) − intérêts personnels bucket TE (${personalTe} €) = ${adjusted4EA} €. Ventilation TE : ${teBreak} = ${(personalTotal > 0 ? (personalTe / personalTotal * 100) : 0).toFixed(2)}% × ${personalTotal} € = ${personalTe} €.`,
+        `${Math.round(exemptIncomeRaw)} € (relevé ${primaryScpiName}, revenus exonérés bruts) − ${personalTe} € (votre emprunt ${primaryBank}, part pays « taux effectif » ${tePct.toFixed(1)}%) = ${adjusted4EA} €`,
       );
     }
   }
@@ -538,16 +545,15 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
   if (totalLine113 > 0) {
     amount.set(key("2044", "Ligne 250"), totalLine113);
     if (personalCi > 0 || personalTotal > 0) {
-      const ciBreak = formatBucketBreakdown(allocation.perScpi, "CI");
       const ciPct = personalTotal > 0 ? (personalCi / personalTotal * 100) : 0;
       reviewHints.set(
         key("2044", "Ligne 250"),
-        `Intérêts SCPI (${scpiOwnInterests} €) + intérêts personnels bucket CI (${personalCi} €) = ${totalLine113} €. Ventilation CI : ${ciBreak || "(aucun pays CI)"} = ${ciPct.toFixed(2)}% × ${personalTotal} € = ${personalCi} €.`,
+        `${Math.round(scpiOwnInterests)} € (relevé ${primaryScpiName}, ligne 113) + ${personalCi} € (votre emprunt ${primaryBank}, part pays « crédit d'impôt » ${ciPct.toFixed(1)}%) = ${totalLine113} €`,
       );
     } else if (scpiOwnInterests > 0 && fallbackPersonal > 0) {
       reviewHints.set(
         key("2044", "Ligne 250"),
-        `Cumul intérêts d'emprunt : ${scpiOwnInterests.toFixed(2)} € (SCPI) + ${fallbackPersonal.toFixed(2)} € (emprunt personnel non ventilable) = ${totalLine113.toFixed(2)} €. Vérifier le total avant report.`,
+        `${Math.round(scpiOwnInterests)} € (relevé ${primaryScpiName}) + ${fallbackPersonal} € (votre emprunt ${primaryBank}, non ventilable par pays) = ${totalLine113} € — vérifiez le total avant report.`,
       );
     }
   }
@@ -556,7 +562,7 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
     for (const c of s.geographicBreakdown ?? []) {
       reviewHints.set(
         key("2047", `Pays ${c.country}`),
-        `Quote-part ${c.country} (${c.percentage.toFixed(2)} %) sur SCPI ${s.scpiName}. À reporter en 2047 selon la convention fiscale bilatérale.`,
+        `Quote-part ${c.country} : ${c.percentage.toFixed(2)} % de votre SCPI ${s.scpiName}. À reporter dans la section 6 de la 2047.`,
       );
     }
   }
@@ -592,6 +598,75 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
 // ─────────────────────────────────────────────────────────────────────────
 // 4. Construction des propositions (catalogue + montants + sources)
 // ─────────────────────────────────────────────────────────────────────────
+// Surcharges de libellés/descriptions pour rendre le guide accessible à un
+// stagiaire sans expérience fiscale. Override appliqué après le catalogue.
+const FRIENDLY_LABELS: Record<string, { label: string; description: string }> = {
+  "2044::Ligne 211": {
+    label: "Ligne 111/211 — Revenus bruts de votre SCPI",
+    description: "Tapez le total des revenus fonciers bruts indiqué sur le relevé fiscal de votre SCPI (page 4, ligne 111 colonne Total).",
+  },
+  "2044::Ligne 230": {
+    label: "Ligne 112/230 — Frais et charges de la SCPI",
+    description: "Frais de gestion prélevés par la société de gestion. Reportez le montant de la ligne 112 du relevé fiscal.",
+  },
+  "2044::Ligne 250": {
+    label: "Ligne 113/250 — Intérêts d'emprunt (SCPI + votre crédit perso)",
+    description: "Total = intérêts payés par la SCPI + votre part des intérêts personnels pour les pays « crédit d'impôt ».",
+  },
+  "2044::Ligne 420": {
+    label: "Ligne 114/420 — Résultat foncier (calcul automatique)",
+    description: "Vérifiez : revenus bruts − frais − intérêts = résultat. Si négatif sur la part étrangère, indiquez 0.",
+  },
+  "2042::4BA": {
+    label: "Case 4BA — Bénéfice foncier net",
+    description: "Reporté automatiquement depuis la 2044. Vérifiez que le montant correspond à la ligne 114.",
+  },
+  "2042::4BL": {
+    label: "Case 4BL — Bénéfice foncier étranger (crédit d'impôt)",
+    description: "Même montant que 4BA. C'est normal que 4BL soit inférieur à 8TK quand vous avez un emprunt.",
+  },
+  "2042::4BC": {
+    label: "Case 4BC — Déficit foncier",
+    description: "À renseigner uniquement si le résultat foncier est négatif.",
+  },
+  "2042::4EA": {
+    label: "Case 4EA — Revenus exonérés (Belgique, Pays-Bas, Irlande...)",
+    description: "Revenus non imposés en France mais pris en compte pour calculer votre taux d'imposition (« taux effectif »).",
+  },
+  "2042::8TK": {
+    label: "Case 8TK — Crédit d'impôt étranger (NE PAS MODIFIER)",
+    description: "Case pré-remplie par l'administration. Ce montant compense la double imposition. Ne le changez pas.",
+  },
+  "2042::2TR": {
+    label: "Case 2TR — Intérêts de placement (SCPI / IFU)",
+    description: "Normalement pré-rempli. Vérifiez que le montant correspond à votre relevé (page 3 du relevé SCPI ou IFU).",
+  },
+  "2042::2DC": {
+    label: "Case 2DC — Dividendes éligibles à l'abattement",
+    description: "Pré-rempli depuis votre IFU. Vérifiez que le montant correspond à votre relevé.",
+  },
+  "2042::2CK": {
+    label: "Case 2CK — Crédit d'impôt prélèvement à la source",
+    description: "Pré-rempli. Acompte déjà prélevé sur vos intérêts/dividendes. Sera déduit de votre impôt final.",
+  },
+  "2042::2CG": {
+    label: "Case 2CG — CSG déductible sur intérêts",
+    description: "Pré-rempli. Sera déductible l'année prochaine si vous optez pour le barème (case 2OP).",
+  },
+  "2042::2BH": {
+    label: "Case 2BH — Revenus déjà soumis aux prélèvements sociaux",
+    description: "À cocher si vous optez pour le barème (2OP) et que vos revenus mobiliers ont déjà subi les prélèvements sociaux.",
+  },
+  "2042::2AB": {
+    label: "Case 2AB — Crédit d'impôt retenue étrangère",
+    description: "Contrepartie de la retenue à la source sur les revenus mobiliers étrangers (dividendes / intérêts).",
+  },
+  "2042::2CH": {
+    label: "Case 2CH — Produits d'assurance-vie (≥ 8 ans)",
+    description: "Part imposable des rachats sur contrats de plus de 8 ans, après abattement.",
+  },
+};
+
 function buildProposalsFromMapping(args: {
   detectedCategories: TaxCategory[];
   amountByBox: AmountMap;
@@ -639,13 +714,14 @@ function buildProposalsFromMapping(args: {
       requiresManualReview = entry.status !== "confirmed";
     }
 
+    const friendly = FRIENDLY_LABELS[k];
     proposals.push({
       formId: entry.formId,
       boxOrLine: entry.boxOrLine,
-      label: entry.label,
-      amount,
+      label: friendly?.label ?? entry.label,
+      amount: amount != null ? Math.round(amount) : null,
       category: entry.category,
-      explanation: entry.description,
+      explanation: friendly?.description ?? entry.description,
       confidence,
       status,
       ragSources,

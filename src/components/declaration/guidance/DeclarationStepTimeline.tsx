@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ChevronRight, Calculator } from "lucide-react";
+import { AlertTriangle, ChevronRight, Calculator, Lock, CheckCircle2 } from "lucide-react";
 import { formatEuro } from "@/lib/declaration/utils/taxFormatting";
 import type {
   DeclarationStep,
@@ -32,6 +32,8 @@ export const DeclarationStepTimeline = ({ steps }: Props) => {
     <ol className="relative border-l-2 border-border/70 pl-5 space-y-4">
       {sorted.map((s, idx) => {
         const prefill = s.prefillStatus ? PREFILL_LABELS[s.prefillStatus] : null;
+        const isLocked = s.prefillStatus === "do_not_modify";
+        const isPrefilled = s.prefillStatus === "prefilled";
         return (
           <li key={s.id} className="relative">
             <span className="absolute -left-[28px] top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[10px] font-semibold text-accent-foreground">
@@ -39,7 +41,11 @@ export const DeclarationStepTimeline = ({ steps }: Props) => {
             </span>
             <Card
               className={`p-3.5 ${
-                s.requiresManualReview ? "border-l-4 border-l-warning" : ""
+                isLocked
+                  ? "border-l-4 border-l-warning ring-1 ring-warning/30 bg-warning/5"
+                  : s.requiresManualReview
+                    ? "border-l-4 border-l-warning"
+                    : ""
               }`}
             >
               <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -58,18 +64,28 @@ export const DeclarationStepTimeline = ({ steps }: Props) => {
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed whitespace-pre-line">
                     {s.description}
                   </p>
+                  {isPrefilled && (
+                    <p className="text-[11px] text-success mt-1.5 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Normalement pré-rempli — vérifiez simplement le montant
+                    </p>
+                  )}
                 </div>
                 {s.amount != null && (
-                  <span className="font-display text-base text-primary whitespace-nowrap font-semibold">
+                  <span className="font-display text-base text-primary whitespace-nowrap font-semibold flex items-center gap-1.5">
+                    {isLocked && <Lock className="h-3.5 w-3.5 text-warning" />}
                     {formatEuro(Math.round(s.amount))}
                   </span>
                 )}
               </div>
 
               {s.calculationNote && (
-                <div className="mt-2.5 flex items-start gap-2 rounded border border-primary/20 bg-primary/5 p-2.5 text-[11px] text-foreground/85">
-                  <Calculator className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary" />
-                  <span className="font-mono leading-relaxed">{s.calculationNote}</span>
+                <div className="mt-2.5 rounded border border-blue-200 bg-blue-50/50 p-2.5 text-[11px] text-foreground/85">
+                  <div className="flex items-center gap-1.5 mb-1 text-[10px] font-semibold uppercase tracking-wide text-blue-700">
+                    <Calculator className="h-3 w-3" />
+                    Détail du calcul
+                  </div>
+                  <span className="leading-relaxed">{s.calculationNote}</span>
                 </div>
               )}
 

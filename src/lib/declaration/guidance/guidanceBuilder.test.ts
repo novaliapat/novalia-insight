@@ -254,11 +254,11 @@ describe("buildDeclarationGuidance — invariants", () => {
       ragByCategory: {}, // RAG DB vide
     });
     const tr = out.guidance.taxBoxProposals.find((p) => p.boxOrLine === "2TR");
-    expect(tr?.amount).toBeCloseTo(115.73);
+    expect(tr?.amount).toBe(116); // arrondi entier (CGI art. 193)
     expect(tr?.ragSources.some((s) => s.isOfficialSource)).toBe(true);
 
     const l250 = out.guidance.taxBoxProposals.find((p) => p.boxOrLine === "Ligne 250");
-    expect(l250?.amount).toBeCloseTo(4003.49);
+    expect(l250?.amount).toBe(4003); // arrondi entier
     expect(l250?.ragSources.some((s) => s.isOfficialSource)).toBe(true);
 
     const bl = out.guidance.taxBoxProposals.find((p) => p.boxOrLine === "4BL");
