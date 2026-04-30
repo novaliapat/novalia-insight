@@ -179,46 +179,66 @@ Deno.serve(async (req) => {
       }),
     );
 
-    // ---------- Appel IA ----------
+    // ---------- Appel IA (Anthropic Claude) ----------
     const userPrompt = buildAnalysisUserPrompt({ taxYear, validatedData, ragByCategory });
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicKey) {
+      await failAndAudit(admin, declarationId, userData.user.id, dryRun, {
+        reason: "ANTHROPIC_API_KEY non configurée",
+      });
+      return json({ error: "ANTHROPIC_API_KEY non configurée" }, 500);
+    }
+
+    // Adapte le tool schema OpenAI-style -> Anthropic
+    const anthropicTool = {
+      name: (ANALYSIS_TOOL_SCHEMA as any).function.name,
+      description: (ANALYSIS_TOOL_SCHEMA as any).function.description,
+      input_schema: (ANALYSIS_TOOL_SCHEMA as any).function.parameters,
+    };
+
+    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
       },
       body: JSON.stringify({
         model: ANALYSIS_MODEL,
+        max_tokens: 16000,
+        system: ANALYSIS_SYSTEM_PROMPT,
         messages: [
-          { role: "system", content: ANALYSIS_SYSTEM_PROMPT },
           { role: "user", content: userPrompt },
         ],
-        tools: [ANALYSIS_TOOL_SCHEMA],
-        tool_choice: { type: "function", function: { name: "produce_fiscal_analysis" } },
+        tools: [anthropicTool],
+        tool_choice: { type: "tool", name: "produce_fiscal_analysis" },
       }),
     });
 
     if (!aiRes.ok) {
       const t = await aiRes.text();
-      console.error("AI gateway error", aiRes.status, t);
+      console.error("Anthropic error", aiRes.status, t);
       await failAndAudit(admin, declarationId, userData.user.id, dryRun, {
-        reason: `AI gateway ${aiRes.status}`,
+        reason: `Anthropic ${aiRes.status}`,
         body: t.slice(0, 1000),
       });
-      if (aiRes.status === 429) return json({ error: "Rate limits exceeded — réessayez dans un instant." }, 429);
-      if (aiRes.status === 402) return json({ error: "Crédits IA épuisés. Ajoutez des fonds dans votre workspace Lovable AI." }, 402);
-      return json({ error: "AI gateway error" }, 500);
+      if (aiRes.status === 429) return json({ error: "Limite de débit Anthropic atteinte — réessayez dans un instant." }, 429);
+      if (aiRes.status === 401) return json({ error: "Clé ANTHROPIC_API_KEY invalide." }, 401);
+      return json({ error: "Anthropic API error" }, 500);
     }
 
     const aiJson = await aiRes.json();
-    const toolCall = aiJson?.choices?.[0]?.message?.tool_calls?.[0];
-    const args = toolCall?.function?.arguments;
-    if (!args) {
-      await failAndAudit(admin, declarationId, userData.user.id, dryRun, { reason: "No tool call" });
+    const contentArr = aiJson?.content as Array<{ type?: string; name?: string; input?: unknown }> | undefined;
+    const toolUse = Array.isArray(contentArr)
+      ? contentArr.find((b) => b?.type === "tool_use" && b?.name === "produce_fiscal_analysis")
+        ?? contentArr.find((b) => b?.type === "tool_use")
+      : undefined;
+    if (!toolUse || toolUse.input === undefined) {
+      await failAndAudit(admin, declarationId, userData.user.id, dryRun, { reason: "No tool use in Anthropic response" });
       return json({ error: "AI did not return a tool call" }, 500);
     }
-    let rawAnalysis: unknown;
+    let rawAnalysis: unknown = toolUse.input;
     try {
       rawAnalysis = JSON.parse(args);
     } catch (e) {
