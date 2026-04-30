@@ -35,7 +35,7 @@ import {
 import { mergeExtractedDataResults } from "./mergeExtractedDataResults.ts";
 import { deriveNormalizationReviewItems } from "./deriveNormalizationReviewItems.ts";
 
-const MODEL_USED = "google/gemini-2.5-pro";
+const MODEL_USED = "claude-sonnet-4-5";
 const RETRY_DELAY_MS = 1500;
 const PER_FILE_FALLBACK_THRESHOLD = 3; // > 2 fichiers → on tentera batching après échec
 
@@ -217,8 +217,8 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) return jsonError(500, "LOVABLE_API_KEY non configurée");
+    const lovableApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!lovableApiKey) return jsonError(500, "ANTHROPIC_API_KEY non configurée");
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
