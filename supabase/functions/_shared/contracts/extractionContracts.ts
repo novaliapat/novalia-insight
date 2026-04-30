@@ -104,15 +104,47 @@ export const IFUEntrySchema = z.object({
   capitalGains: ConfidentNumberSchema.optional(),
   withholdingTax: ConfidentNumberSchema.optional(),
   socialContributions: ConfidentNumberSchema.optional(),
+  csgDeductible: ConfidentNumberSchema.optional(), // 2BH ou 2CG
+});
+
+export const SCPICountryIncomeSchema = z.object({
+  country: z.string(),
+  income: ConfidentNumberSchema,
+  taxTreatment: z.enum(["tax_credit", "effective_rate", "exempt"]).optional(),
 });
 
 export const SCPIEntrySchema = z.object({
   scpiName: z.string(),
   managementCompany: z.string().optional(),
+
+  // Annexe 2044 — lignes 111 à 114
+  grossIncome: ConfidentNumberSchema.optional(),
   frenchIncome: ConfidentNumberSchema.optional(),
   foreignIncome: ConfidentNumberSchema.optional(),
-  deductibleInterests: ConfidentNumberSchema.optional(),
+  expenses: ConfidentNumberSchema.optional(),
+  scpiLoanInterests: ConfidentNumberSchema.optional(),
+  netIncome: ConfidentNumberSchema.optional(),
+
+  // Intérêts d'emprunt personnels
+  personalLoanInterests: ConfidentNumberSchema.optional(),
+
+  // Reports 2042
+  exemptIncome: ConfidentNumberSchema.optional(),
+  microFoncierExempt: ConfidentNumberSchema.optional(),
+  foreignTaxCredit: ConfidentNumberSchema.optional(),
+
+  // Ventilation par pays
+  incomeByCountry: z.array(SCPICountryIncomeSchema).optional(),
+
+  // PS
   socialContributions: ConfidentNumberSchema.optional(),
+
+  // IFI
+  ifiValuePerShare: ConfidentNumberSchema.optional(),
+  numberOfShares: ConfidentNumberSchema.optional(),
+
+  // DEPRECATED
+  deductibleInterests: ConfidentNumberSchema.optional(),
 });
 
 export const LifeInsuranceEntrySchema = z.object({

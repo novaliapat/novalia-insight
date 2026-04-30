@@ -121,15 +121,48 @@ export const IFUEntrySchema = z.object({
   capitalGains: ConfidentNumberSchema.optional(),
   withholdingTax: ConfidentNumberSchema.optional(),
   socialContributions: ConfidentNumberSchema.optional(),
+  csgDeductible: ConfidentNumberSchema.optional(), // 2BH ou 2CG
+});
+
+export const SCPICountryIncomeSchema = z.object({
+  country: z.string(),
+  income: ConfidentNumberSchema,
+  taxTreatment: z.enum(["tax_credit", "effective_rate", "exempt"]).optional(),
 });
 
 export const SCPIEntrySchema = z.object({
   scpiName: z.string(),
   managementCompany: z.string().optional(),
-  frenchIncome: ConfidentNumberSchema.optional(),
-  foreignIncome: ConfidentNumberSchema.optional(),
-  deductibleInterests: ConfidentNumberSchema.optional(),
+
+  // Annexe 2044 — lignes 111 à 114
+  grossIncome: ConfidentNumberSchema.optional(),         // Ligne 111 total (revenus bruts)
+  frenchIncome: ConfidentNumberSchema.optional(),        // Ligne 111 part France
+  foreignIncome: ConfidentNumberSchema.optional(),       // Ligne 111 part étranger
+  expenses: ConfidentNumberSchema.optional(),            // Ligne 112 (frais et charges hors intérêts)
+  scpiLoanInterests: ConfidentNumberSchema.optional(),   // Ligne 113 (intérêts d'emprunt de la SCPI)
+  netIncome: ConfidentNumberSchema.optional(),           // Ligne 114 (bénéfice ou déficit)
+
+  // Intérêts d'emprunt personnels (attestation bancaire)
+  personalLoanInterests: ConfidentNumberSchema.optional(),
+
+  // Reports déclaration principale 2042
+  exemptIncome: ConfidentNumberSchema.optional(),        // 4EA
+  microFoncierExempt: ConfidentNumberSchema.optional(),  // 4EB
+  foreignTaxCredit: ConfidentNumberSchema.optional(),    // 8TK
+
+  // Ventilation par pays
+  incomeByCountry: z.array(SCPICountryIncomeSchema).optional(),
+
+  // Prélèvements sociaux
   socialContributions: ConfidentNumberSchema.optional(),
+
+  // IFI
+  ifiValuePerShare: ConfidentNumberSchema.optional(),
+  numberOfShares: ConfidentNumberSchema.optional(),
+
+  // DEPRECATED — remplacé par personalLoanInterests / scpiLoanInterests.
+  // Conservé optionnel pour ne pas invalider les déclarations existantes.
+  deductibleInterests: ConfidentNumberSchema.optional(),
 });
 
 export const LifeInsuranceEntrySchema = z.object({
