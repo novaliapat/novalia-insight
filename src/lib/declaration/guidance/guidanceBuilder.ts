@@ -184,16 +184,16 @@ export function detectSituations(d: ExtractedData): {
       (s.foreignIncome?.value ?? 0) > 0 ||
       (s.foreignTaxCredit?.value ?? 0) > 0 ||
       (s.exemptIncome?.value ?? 0) > 0 ||
-      (s.incomeByCountry?.length ?? 0) > 0,
+      ((s.geographicBreakdown ?? []).length > 0),
     )) {
       situations.push("Revenus de SCPI de source étrangère (convention fiscale à appliquer).");
       hasForeign = true;
     }
+    const personalInterestsAny2 = (d.loans ?? []).some((l) => (l.annualInterests?.value ?? 0) > 0);
     if (scpi.some((s) =>
       (s.deductibleInterests?.value ?? 0) > 0 ||
-      (s.scpiLoanInterests?.value ?? 0) > 0 ||
-      (s.personalLoanInterests?.value ?? 0) > 0,
-    )) {
+      (s.scpiLoanInterests?.value ?? 0) > 0,
+    ) || personalInterestsAny2) {
       situations.push("Intérêts d'emprunt liés aux investissements SCPI/fonciers.");
     }
   }

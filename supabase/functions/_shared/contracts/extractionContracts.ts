@@ -186,6 +186,7 @@ export const ExtractedDataSchema = z.object({
   ifu: z.array(IFUEntrySchema).default([]),
   scpi: z.array(SCPIEntrySchema).default([]),
   lifeInsurance: z.array(LifeInsuranceEntrySchema).default([]),
+  loans: z.array(LoanEntrySchema).optional(),
   realEstateIncome: GenericCategoryEntrySchema.optional(),
   dividends: GenericCategoryEntrySchema.optional(),
   interests: GenericCategoryEntrySchema.optional(),
