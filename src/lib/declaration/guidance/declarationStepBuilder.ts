@@ -1,9 +1,18 @@
 // Construit les étapes du parcours déclaratif (type impots.gouv) à partir
 // des formulaires requis et des propositions de cases. Aucune invention.
+//
+// Structure pédagogique en 5 blocs :
+//   BLOC 1 — preparation : rubriques à cocher au début du parcours
+//   BLOC 2 — 2044        : annexe revenus fonciers (lignes 211, 230, 250, 420)
+//   BLOC 3 — 2047        : annexe revenus étrangers (sections 4 et 6)
+//   BLOC 4 — 2042        : déclaration principale (cases de report)
+//   BLOC 5 — recap       : tableau récapitulatif + checklist finale
 import type {
   DeclarationStep,
   RequiredForm,
   TaxBoxProposal,
+  TaxFormId,
+  PrefillStatus,
 } from "@/lib/declaration/guidance/guidanceSchemas";
 
 export interface BuildStepsInput {
@@ -11,26 +20,76 @@ export interface BuildStepsInput {
   proposals: TaxBoxProposal[];
 }
 
-// Ordre déclaratif logique : annexes d'abord (2044, 2047), principal ensuite.
 const FORM_ORDER: Record<string, number> = {
+  preparation: 0,
   "2044": 1,
   "2047": 2,
   "2042-RICI": 3,
   "2042C": 4,
   "2042": 5,
-  "other": 9,
+  recap: 6,
+  other: 9,
 };
 
+// Cases pré-remplies sur impots.gouv.fr (issues du PASRAU / IFU télétransmis)
+const PREFILLED_BOXES = new Set(["2TR", "2DC", "2CK", "2CG", "2BH", "3VZ"]);
+// Cases reportées automatiquement depuis une annexe
+const AUTO_REPORT_BOXES = new Set(["4BA", "4BC", "4BL"]);
+// Cases pré-remplies à NE PAS modifier
+const DO_NOT_MODIFY_BOXES = new Set(["8TK"]);
+
+function computePrefillStatus(formId: TaxFormId, box: string): PrefillStatus {
+  if (formId !== "2042") return "to_enter";
+  if (DO_NOT_MODIFY_BOXES.has(box)) return "do_not_modify";
+  if (AUTO_REPORT_BOXES.has(box)) return "auto_report";
+  if (PREFILLED_BOXES.has(box)) return "prefilled";
+  return "to_enter";
+}
+
+const round = (n: number | null | undefined): number | null =>
+  n == null ? null : Math.round(n);
+
 export function buildDeclarationSteps(input: BuildStepsInput): DeclarationStep[] {
+  const steps: DeclarationStep[] = [];
+  let order = 0;
+
+  // ─── BLOC 1 — PRÉPARATION ─────────────────────────────────────────
+  const detectedFormIds = new Set(input.requiredForms.map((f) => f.formId));
+  const has2044 = detectedFormIds.has("2044");
+  const has2047 = detectedFormIds.has("2047");
+  const hasMobilier = input.proposals.some(
+    (p) => p.formId === "2042" && ["2TR", "2DC", "2CK", "2CG", "2BH"].includes(p.boxOrLine),
+  );
+  const has3VZ = input.proposals.some(
+    (p) => p.formId === "2042" && p.boxOrLine === "3VZ" && (p.amount ?? 0) > 0,
+  );
+
+  const prepInstructions: string[] = [];
+  if (hasMobilier) prepInstructions.push("Cocher « Revenus de capitaux mobiliers » (cases 2TR, 2DC, 2CK, 2CG).");
+  if (has2044) prepInstructions.push("Cocher « Revenus fonciers » → sélectionner uniquement « Annexe n°2044 » (régime réel SCPI).");
+  if (has3VZ) prepInstructions.push("Cocher « Plus-values et gains divers » → ligne 3VZ (plus-values pré-remplies).");
+  if (has2047) prepInstructions.push("Cocher « Comptes à l'étranger, Revenus de source étrangère » → sélectionner « Annexe n°2047 ».");
+  prepInstructions.push("NE PAS sélectionner les annexes 2074, 2086 ou autres si non concernées.");
+
+  if (prepInstructions.length > 0) {
+    steps.push({
+      id: "prep-rubriques",
+      order: order++,
+      title: "Sélectionner les rubriques sur impots.gouv.fr",
+      description: prepInstructions.join("\n"),
+      formId: "preparation",
+      actionType: "check_box",
+      ragSources: [],
+      requiresManualReview: false,
+    });
+  }
+
+  // ─── BLOCS 2-4 — Formulaires (annexes puis principal) ─────────────
   const formsSorted = [...input.requiredForms].sort(
     (a, b) => (FORM_ORDER[a.formId] ?? 99) - (FORM_ORDER[b.formId] ?? 99),
   );
 
-  const steps: DeclarationStep[] = [];
-  let order = 0;
-
   for (const form of formsSorted) {
-    // Étape 1 : ouvrir le formulaire
     steps.push({
       id: `open-${form.formId}`,
       order: order++,
@@ -42,9 +101,14 @@ export function buildDeclarationSteps(input: BuildStepsInput): DeclarationStep[]
       requiresManualReview: form.confidence !== "high",
     });
 
-    // Étapes suivantes : une par case proposée pour ce formulaire
     const formProposals = input.proposals.filter((p) => p.formId === form.formId);
     for (const p of formProposals) {
+      const prefillStatus = computePrefillStatus(p.formId, p.boxOrLine);
+      // blockingReason contient nos notes de calcul détaillées (cf. mapValidatedAmountsToBoxes)
+      const calculationNote =
+        p.blockingReason && /=|\+|×|%/.test(p.blockingReason) ? p.blockingReason : undefined;
+      const warning = calculationNote ? undefined : p.blockingReason;
+
       steps.push({
         id: `${form.formId}-${p.boxOrLine}`,
         order: order++,
@@ -55,16 +119,59 @@ export function buildDeclarationSteps(input: BuildStepsInput): DeclarationStep[]
         actionType: p.amount != null
           ? (p.requiresManualReview ? "verify_amount" : "enter_amount")
           : "manual_review",
-        amount: p.amount,
+        amount: round(p.amount),
         targetBox: p.boxOrLine,
-        sourceData: {
-          category: p.category,
-        },
+        sourceData: { category: p.category },
         ragSources: p.ragSources,
-        warning: p.blockingReason,
+        warning,
         requiresManualReview: p.requiresManualReview,
+        calculationNote,
+        prefillStatus,
       });
     }
+  }
+
+  // ─── BLOC 5 — RÉCAPITULATIF ───────────────────────────────────────
+  if (input.proposals.length > 0) {
+    const lines = input.proposals.map((p) => {
+      const status = computePrefillStatus(p.formId, p.boxOrLine);
+      const statusLabel: Record<PrefillStatus, string> = {
+        to_enter: "À saisir",
+        prefilled: "Pré-rempli (vérifier)",
+        auto_report: "Report automatique",
+        do_not_modify: "Ne pas modifier",
+      };
+      const amt = p.amount != null ? `${Math.round(p.amount)} €` : "—";
+      return `${p.formId} • ${p.boxOrLine} — ${p.label} : ${amt} (${statusLabel[status]})`;
+    });
+
+    steps.push({
+      id: "recap-table",
+      order: order++,
+      title: "Tableau récapitulatif des cases",
+      description: lines.join("\n"),
+      formId: "recap",
+      actionType: "verify_amount",
+      ragSources: [],
+      requiresManualReview: false,
+    });
+
+    steps.push({
+      id: "recap-checklist",
+      order: order++,
+      title: "Checklist de validation finale",
+      description: [
+        "Σ intérêts d'emprunt répartis = total des attestations bancaires.",
+        "Ligne 114 (résultat 2044) non négative sur la part étrangère.",
+        "8TK reste pré-remplie et non modifiée (égale au total section 6 de la 2047).",
+        "4BL ≤ 8TK si emprunt personnel (le NET ne peut excéder le BRUT).",
+        "Toutes les pièces justificatives (relevés SCPI, attestations bancaires, IFU) sont conservées.",
+      ].join("\n"),
+      formId: "recap",
+      actionType: "verify_amount",
+      ragSources: [],
+      requiresManualReview: false,
+    });
   }
 
   return steps;
