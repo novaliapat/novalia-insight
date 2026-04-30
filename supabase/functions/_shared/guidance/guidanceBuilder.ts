@@ -292,6 +292,126 @@ function sumOpt(...nums: Array<number | null | undefined>): number {
   return nums.reduce<number>((acc, n) => acc + (typeof n === "number" ? n : 0), 0);
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// 3.bis Cascade de ventilation des intérêts d'emprunt personnels
+//   Niveau 1 : répartition inter-SCPI (linkedScpis ou prorata égal)
+//   Niveau 2 : ventilation par pays via geographicBreakdown
+//   Niveau 3 : bucket CI (crédit d'impôt = IR français) vs TE (taux effectif)
+// ─────────────────────────────────────────────────────────────────────────
+const BUCKET_CI_COUNTRIES = new Set(["FR", "DE", "GB", "UK", "ES", "IT"]);
+const BUCKET_TE_COUNTRIES = new Set(["BE", "NL", "IE", "PL", "CA"]);
+
+export interface LoanAllocationBreakdown {
+  country: string;
+  pct: number;
+  amount: number;
+  bucket: "CI" | "TE";
+}
+
+export interface LoanAllocation {
+  scpiName: string;
+  totalPersonalInterests: number;
+  ciInterests: number;
+  teInterests: number;
+  breakdown: LoanAllocationBreakdown[];
+  missingGeoKey: boolean;
+}
+
+export interface LoanAllocationResult {
+  perScpi: LoanAllocation[];
+  unlinkedLoans: Array<{ bank: string; amount: number }>;
+  totalCi: number;
+  totalTe: number;
+  totalPersonal: number;
+}
+
+export function allocatePersonalLoanInterests(
+  loans: ExtractedData["loans"] | undefined,
+  scpiEntries: ExtractedData["scpi"] | undefined,
+): LoanAllocationResult {
+  const result: LoanAllocationResult = {
+    perScpi: [],
+    unlinkedLoans: [],
+    totalCi: 0,
+    totalTe: 0,
+    totalPersonal: 0,
+  };
+  const scpis = scpiEntries ?? [];
+  for (const loan of loans ?? []) {
+    const interestsTotal = loan.annualInterests?.value ?? 0;
+    if (interestsTotal <= 0) continue;
+    result.totalPersonal += interestsTotal;
+
+    let linked = scpis;
+    const requested = (loan.linkedScpis ?? []).map((s) => s.toLowerCase());
+    if (requested.length > 0) {
+      const filtered = scpis.filter((s) =>
+        requested.includes(s.scpiName.toLowerCase()),
+      );
+      if (filtered.length > 0) linked = filtered;
+    }
+    if (linked.length === 0) {
+      result.unlinkedLoans.push({ bank: loan.bank ?? "Banque", amount: interestsTotal });
+      continue;
+    }
+
+    const perScpi = interestsTotal / linked.length;
+    for (const scpi of linked) {
+      const geo = scpi.geographicBreakdown ?? [];
+      if (geo.length === 0) {
+        // Pas de clé géo → tout en CI par prudence
+        result.perScpi.push({
+          scpiName: scpi.scpiName,
+          totalPersonalInterests: perScpi,
+          ciInterests: perScpi,
+          teInterests: 0,
+          breakdown: [],
+          missingGeoKey: true,
+        });
+        result.totalCi += perScpi;
+        continue;
+      }
+      let ciTotal = 0;
+      let teTotal = 0;
+      const breakdown: LoanAllocationBreakdown[] = [];
+      for (const g of geo) {
+        const code = g.country.toUpperCase();
+        const amount = Math.round((perScpi * g.percentage) / 100);
+        const bucket = BUCKET_TE_COUNTRIES.has(code) ? "TE" as const : "CI" as const;
+        if (bucket === "CI") ciTotal += amount;
+        else teTotal += amount;
+        breakdown.push({ country: code, pct: g.percentage, amount, bucket });
+      }
+      result.perScpi.push({
+        scpiName: scpi.scpiName,
+        totalPersonalInterests: perScpi,
+        ciInterests: ciTotal,
+        teInterests: teTotal,
+        breakdown,
+        missingGeoKey: false,
+      });
+      result.totalCi += ciTotal;
+      result.totalTe += teTotal;
+    }
+  }
+  return result;
+}
+
+function formatBucketBreakdown(
+  allocs: LoanAllocation[],
+  bucket: "CI" | "TE",
+): string {
+  const parts: string[] = [];
+  for (const a of allocs) {
+    for (const b of a.breakdown) {
+      if (b.bucket !== bucket) continue;
+      parts.push(`${b.country} ${b.pct.toFixed(2)}%`);
+    }
+  }
+  return parts.join(" + ");
+}
+
+
 /**
  * Mapping conservateur :
  *   IFU.dividends         → 2042/2DC
