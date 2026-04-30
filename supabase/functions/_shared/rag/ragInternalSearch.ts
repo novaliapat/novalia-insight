@@ -99,8 +99,9 @@ export async function searchRagInternal(
     })
     .sort((a, b) => b.relevanceScore - a.relevanceScore);
 
-  const topScore = sources[0]?.relevanceScore ?? 0;
-  const missingSources = sources.length === 0 || topScore < RAG_RELEVANCE_MEDIUM;
+  // Filtrage déjà strict via SQL (catégorie + année). Si des chunks remontent
+  // dans la bonne catégorie, on les considère pertinents — le score sert au tri.
+  const missingSources = sources.length === 0;
 
   return {
     category,
