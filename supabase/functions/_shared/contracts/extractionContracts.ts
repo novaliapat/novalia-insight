@@ -132,7 +132,7 @@ export const SCPIEntrySchema = z.object({
   netIncome: ConfidentNumberSchema.optional(),
 
   // Clé géographique
-  geographicBreakdown: z.array(SCPICountryBreakdownSchema).default([]),
+  geographicBreakdown: z.array(SCPICountryBreakdownSchema).optional(),
 
   // Reports 2042
   exemptIncome: ConfidentNumberSchema.optional(),
