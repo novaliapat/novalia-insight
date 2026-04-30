@@ -48,6 +48,34 @@ export const DeclarationGuidancePanel = ({
   const guidance = hook.guidance ?? initialGuidance ?? null;
   const status = hook.status ?? (initialGuidance ? "guidance_completed" : null);
 
+  // Récupère les infos SCPI (pour l'encart 2044)
+  const [scpiInfo, setScpiInfo] = useState<ScpiInfo[]>([]);
+  useEffect(() => {
+    if (!declarationId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("declaration_validated_data")
+        .select("validated_data")
+        .eq("declaration_id", declarationId)
+        .maybeSingle();
+      if (cancelled) return;
+      const scpiArr = (data?.validated_data as { scpi?: Array<{ scpiName?: string; address?: string; numberOfShares?: { value?: number } }> })?.scpi ?? [];
+      setScpiInfo(
+        scpiArr
+          .filter((s) => s.scpiName)
+          .map((s) => ({
+            scpiName: s.scpiName as string,
+            address: s.address,
+            numberOfShares: s.numberOfShares?.value,
+          })),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [declarationId]);
+
   const usedSources = useMemo(() => {
     if (!guidance) return [] as FormSource[];
     const map = new Map<string, FormSource>();
