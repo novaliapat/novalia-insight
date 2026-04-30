@@ -72,8 +72,20 @@ const IFU_ITEM_SCHEMA = {
     capitalGains: CONFIDENT_NUMBER_SCHEMA,
     withholdingTax: CONFIDENT_NUMBER_SCHEMA,
     socialContributions: CONFIDENT_NUMBER_SCHEMA,
+    csgDeductible: CONFIDENT_NUMBER_SCHEMA,
   },
   required: ["institution"],
+};
+
+const SCPI_COUNTRY_INCOME_SCHEMA = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    country: { type: "string" },
+    income: CONFIDENT_NUMBER_SCHEMA,
+    taxTreatment: { type: "string", enum: ["tax_credit", "effective_rate", "exempt"] },
+  },
+  required: ["country", "income"],
 };
 
 const SCPI_ITEM_SCHEMA = {
@@ -82,10 +94,28 @@ const SCPI_ITEM_SCHEMA = {
   properties: {
     scpiName: { type: "string" },
     managementCompany: { type: "string" },
+    // Annexe 2044
+    grossIncome: CONFIDENT_NUMBER_SCHEMA,
     frenchIncome: CONFIDENT_NUMBER_SCHEMA,
     foreignIncome: CONFIDENT_NUMBER_SCHEMA,
-    deductibleInterests: CONFIDENT_NUMBER_SCHEMA,
+    expenses: CONFIDENT_NUMBER_SCHEMA,
+    scpiLoanInterests: CONFIDENT_NUMBER_SCHEMA,
+    netIncome: CONFIDENT_NUMBER_SCHEMA,
+    // Intérêts emprunt personnels
+    personalLoanInterests: CONFIDENT_NUMBER_SCHEMA,
+    // Reports 2042
+    exemptIncome: CONFIDENT_NUMBER_SCHEMA,
+    microFoncierExempt: CONFIDENT_NUMBER_SCHEMA,
+    foreignTaxCredit: CONFIDENT_NUMBER_SCHEMA,
+    // Ventilation pays
+    incomeByCountry: { type: "array", items: SCPI_COUNTRY_INCOME_SCHEMA },
+    // PS
     socialContributions: CONFIDENT_NUMBER_SCHEMA,
+    // IFI
+    ifiValuePerShare: CONFIDENT_NUMBER_SCHEMA,
+    numberOfShares: CONFIDENT_NUMBER_SCHEMA,
+    // Deprecated
+    deductibleInterests: CONFIDENT_NUMBER_SCHEMA,
   },
   required: ["scpiName"],
 };

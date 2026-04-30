@@ -1,7 +1,7 @@
 // Prompt d'extraction fiscale — Lot 2
 // -----------------------------------------------------------------------------
 // Version du prompt : à incrémenter à chaque modification de comportement.
-export const EXTRACTION_PROMPT_VERSION = "v1.1.0";
+export const EXTRACTION_PROMPT_VERSION = "v1.2.0";
 
 // -----------------------------------------------------------------------------
 // CLAUSE DE CONFORMITÉ
@@ -110,15 +110,41 @@ capital_gains, foreign_accounts, per, tax_credits, deductible_expenses, other.
 
 Champs à extraire par type de document (toujours avec sourceDocument = nom du fichier) :
 
+- SCPI (relevé fiscal SCPI / relevé de société de gestion) :
+  scpiName, managementCompany,
+
+  Annexe 2044 (lignes 111 à 114 du tableau) :
+  - grossIncome = ligne 111 total (revenus bruts)
+  - frenchIncome = ligne 111 part France uniquement
+  - foreignIncome = ligne 111 part étranger uniquement
+  - expenses = ligne 112 (frais et charges, HORS intérêts d'emprunt)
+  - scpiLoanInterests = ligne 113 (intérêts d'emprunt payés PAR la SCPI)
+  - netIncome = ligne 114 (bénéfice ou déficit = 111 - 112 - 113)
+
+  Reports déclaration principale 2042 (si présents dans le document) :
+  - exemptIncome = montant indiqué pour la case 4EA (revenus exonérés soumis au taux effectif)
+  - microFoncierExempt = montant indiqué pour la case 4EB (régime micro-foncier exonéré)
+  - foreignTaxCredit = montant indiqué pour la case 8TK (crédit d'impôt = impôt français)
+
+  Ventilation par pays (si le document détaille les revenus par pays) :
+  - incomeByCountry = tableau [{country, income, taxTreatment}]
+    taxTreatment = "tax_credit" si crédit d'impôt (Allemagne, RU, Espagne, Italie),
+                   "effective_rate" si taux effectif (Belgique, Pays-Bas, Irlande),
+                   "exempt" si exonéré
+
+  Intérêts d'emprunt personnels (si fournis par attestation bancaire séparée) :
+  - personalLoanInterests = intérêts d'emprunt payés par l'associé (document = attestation de la banque)
+  ATTENTION : ne PAS confondre avec scpiLoanInterests (intérêts de la SCPI elle-même, ligne 113).
+
+  socialContributions (si présent),
+  ifiValuePerShare (valeur IFI par part, si indiquée),
+  numberOfShares (nombre de parts au 01/01, si indiqué).
+
 - IFU (Imprimé Fiscal Unique) :
   institution, accountNumber (si présent),
-  dividends, interests, capitalGains, withholdingTax (PFU prélevé),
+  dividends, interests, capitalGains, withholdingTax (PFU prélevé / 2CK),
+  csgDeductible (montant 2BH ou 2CG si présent),
   socialContributions (prélèvements sociaux).
-
-- SCPI :
-  scpiName, managementCompany,
-  frenchIncome, foreignIncome (préciser le pays dans note si visible),
-  deductibleInterests, socialContributions.
 
 - Assurance-vie :
   contractName, insurer,
