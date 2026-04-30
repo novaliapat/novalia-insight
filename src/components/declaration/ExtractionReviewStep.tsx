@@ -215,28 +215,20 @@ export const ExtractionReviewStep = ({
         </section>
       )}
 
-      {(display.scpi ?? []).some((s) => (s.incomeByCountry?.length ?? 0) > 0) && (
+      {(display.scpi ?? []).some((s) => (s.geographicBreakdown?.length ?? 0) > 0) && (
         <Card className="p-5 space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Revenus SCPI par pays
+            Clé géographique SCPI
           </h3>
           {(display.scpi ?? []).map((entry, idx) =>
-            (entry.incomeByCountry?.length ?? 0) > 0 ? (
+            (entry.geographicBreakdown?.length ?? 0) > 0 ? (
               <div key={idx} className="text-sm space-y-1">
                 <div className="font-medium">{entry.scpiName}</div>
                 <div className="space-y-1 pl-3">
-                  {entry.incomeByCountry!.map((c, i) => (
+                  {entry.geographicBreakdown!.map((c, i) => (
                     <div key={i} className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">
-                        {c.country}
-                        {c.taxTreatment ? ` · ${c.taxTreatment}` : ""}
-                      </span>
-                      <span className="font-mono">
-                        {new Intl.NumberFormat("fr-FR", {
-                          style: "currency",
-                          currency: "EUR",
-                        }).format(c.income.value)}
-                      </span>
+                      <span className="text-muted-foreground">{c.country}</span>
+                      <span className="font-mono">{c.percentage.toFixed(2)} %</span>
                     </div>
                   ))}
                 </div>
