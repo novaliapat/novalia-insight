@@ -65,18 +65,18 @@ export function buildDeclarationSteps(input: BuildStepsInput): DeclarationStep[]
   );
 
   const prepInstructions: string[] = [];
-  if (hasMobilier) prepInstructions.push("Cocher « Revenus de capitaux mobiliers » (cases 2TR, 2DC, 2CK, 2CG).");
-  if (has2044) prepInstructions.push("Cocher « Revenus fonciers » → sélectionner uniquement « Annexe n°2044 » (régime réel SCPI).");
-  if (has3VZ) prepInstructions.push("Cocher « Plus-values et gains divers » → ligne 3VZ (plus-values pré-remplies).");
-  if (has2047) prepInstructions.push("Cocher « Comptes à l'étranger, Revenus de source étrangère » → sélectionner « Annexe n°2047 ».");
-  prepInstructions.push("NE PAS sélectionner les annexes 2074, 2086 ou autres si non concernées.");
+  if (hasMobilier) prepInstructions.push("✅ Cochez « Revenus de capitaux mobiliers » (cases 2TR, 2DC, 2CK, 2CG)");
+  if (has2044) prepInstructions.push("✅ Cochez « Revenus fonciers » → puis sélectionnez « Annexe n°2044 » (régime réel SCPI)");
+  if (has3VZ) prepInstructions.push("✅ Cochez « Plus-values et gains divers » → ligne 3VZ");
+  if (has2047) prepInstructions.push("✅ Cochez « Comptes à l'étranger, Revenus de source étrangère » → puis « Annexe n°2047 »");
+  prepInstructions.push("⛔ NE cochez PAS les annexes 2074 ou 2086 si elles ne sont pas listées ci-dessus.");
 
   if (prepInstructions.length > 0) {
     steps.push({
       id: "prep-rubriques",
       order: order++,
-      title: "Sélectionner les rubriques sur impots.gouv.fr",
-      description: prepInstructions.join("\n"),
+      title: "Étape 1 — Sélectionner vos rubriques sur impots.gouv.fr",
+      description: "À l'étape « Sélection des rubriques » :\n" + prepInstructions.join("\n"),
       formId: "preparation",
       actionType: "check_box",
       ragSources: [],
