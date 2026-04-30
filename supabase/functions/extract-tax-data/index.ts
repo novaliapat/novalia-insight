@@ -77,15 +77,14 @@ const IFU_ITEM_SCHEMA = {
   required: ["institution"],
 };
 
-const SCPI_COUNTRY_INCOME_SCHEMA = {
+const SCPI_COUNTRY_BREAKDOWN_SCHEMA = {
   type: "object",
   additionalProperties: true,
   properties: {
     country: { type: "string" },
-    income: CONFIDENT_NUMBER_SCHEMA,
-    taxTreatment: { type: "string", enum: ["tax_credit", "effective_rate", "exempt"] },
+    percentage: { type: "number" },
   },
-  required: ["country", "income"],
+  required: ["country", "percentage"],
 };
 
 const SCPI_ITEM_SCHEMA = {
@@ -94,27 +93,22 @@ const SCPI_ITEM_SCHEMA = {
   properties: {
     scpiName: { type: "string" },
     managementCompany: { type: "string" },
-    // Annexe 2044
+    numberOfShares: CONFIDENT_NUMBER_SCHEMA,
     grossIncome: CONFIDENT_NUMBER_SCHEMA,
     frenchIncome: CONFIDENT_NUMBER_SCHEMA,
     foreignIncome: CONFIDENT_NUMBER_SCHEMA,
     expenses: CONFIDENT_NUMBER_SCHEMA,
     scpiLoanInterests: CONFIDENT_NUMBER_SCHEMA,
     netIncome: CONFIDENT_NUMBER_SCHEMA,
-    // Intérêts emprunt personnels
-    personalLoanInterests: CONFIDENT_NUMBER_SCHEMA,
-    // Reports 2042
+    geographicBreakdown: { type: "array", items: SCPI_COUNTRY_BREAKDOWN_SCHEMA },
     exemptIncome: CONFIDENT_NUMBER_SCHEMA,
-    microFoncierExempt: CONFIDENT_NUMBER_SCHEMA,
     foreignTaxCredit: CONFIDENT_NUMBER_SCHEMA,
-    // Ventilation pays
-    incomeByCountry: { type: "array", items: SCPI_COUNTRY_INCOME_SCHEMA },
-    // PS
-    socialContributions: CONFIDENT_NUMBER_SCHEMA,
-    // IFI
+    rcmInterests: CONFIDENT_NUMBER_SCHEMA,
+    rcmCsgDeductible: CONFIDENT_NUMBER_SCHEMA,
+    rcmWithholdingTax: CONFIDENT_NUMBER_SCHEMA,
+    capitalGains: CONFIDENT_NUMBER_SCHEMA,
     ifiValuePerShare: CONFIDENT_NUMBER_SCHEMA,
-    numberOfShares: CONFIDENT_NUMBER_SCHEMA,
-    // Deprecated
+    socialContributions: CONFIDENT_NUMBER_SCHEMA,
     deductibleInterests: CONFIDENT_NUMBER_SCHEMA,
   },
   required: ["scpiName"],
@@ -132,6 +126,21 @@ const LIFE_ITEM_SCHEMA = {
     withholdingTax: CONFIDENT_NUMBER_SCHEMA,
   },
   required: ["contractName"],
+};
+
+const LOAN_ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    bank: { type: "string" },
+    loanNumber: { type: "string" },
+    principal: CONFIDENT_NUMBER_SCHEMA,
+    firstDrawdownDate: { type: "string" },
+    annualInterests: CONFIDENT_NUMBER_SCHEMA,
+    year: { type: "integer" },
+    linkedScpis: { type: "array", items: { type: "string" } },
+  },
+  required: ["bank", "annualInterests"],
 };
 
 const TOOL_SCHEMA = {
@@ -167,13 +176,14 @@ const TOOL_SCHEMA = {
         ifu: { type: "array", items: IFU_ITEM_SCHEMA },
         scpi: { type: "array", items: SCPI_ITEM_SCHEMA },
         lifeInsurance: { type: "array", items: LIFE_ITEM_SCHEMA },
+        loans: { type: "array", items: LOAN_ITEM_SCHEMA },
         warnings: { type: "array", items: { type: "string" } },
         missingData: { type: "array", items: { type: "string" } },
         globalConfidence: { type: "string", enum: ["high", "medium", "low"] },
       },
       required: [
         "taxpayer", "taxYear", "detectedCategories",
-        "ifu", "scpi", "lifeInsurance",
+        "ifu", "scpi", "lifeInsurance", "loans",
         "warnings", "missingData", "globalConfidence",
       ],
     },

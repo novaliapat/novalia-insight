@@ -130,38 +130,44 @@ export const SCPICountryIncomeSchema = z.object({
   taxTreatment: z.enum(["tax_credit", "effective_rate", "exempt"]).optional(),
 });
 
+export const SCPICountryBreakdownSchema = z.object({
+  country: z.string(),
+  percentage: z.number(),
+});
+
 export const SCPIEntrySchema = z.object({
   scpiName: z.string(),
   managementCompany: z.string().optional(),
+  numberOfShares: ConfidentNumberSchema.optional(),
 
   // Annexe 2044 — lignes 111 à 114
-  grossIncome: ConfidentNumberSchema.optional(),         // Ligne 111 total (revenus bruts)
-  frenchIncome: ConfidentNumberSchema.optional(),        // Ligne 111 part France
-  foreignIncome: ConfidentNumberSchema.optional(),       // Ligne 111 part étranger
-  expenses: ConfidentNumberSchema.optional(),            // Ligne 112 (frais et charges hors intérêts)
-  scpiLoanInterests: ConfidentNumberSchema.optional(),   // Ligne 113 (intérêts d'emprunt de la SCPI)
-  netIncome: ConfidentNumberSchema.optional(),           // Ligne 114 (bénéfice ou déficit)
+  grossIncome: ConfidentNumberSchema.optional(),
+  frenchIncome: ConfidentNumberSchema.optional(),
+  foreignIncome: ConfidentNumberSchema.optional(),
+  expenses: ConfidentNumberSchema.optional(),
+  scpiLoanInterests: ConfidentNumberSchema.optional(),
+  netIncome: ConfidentNumberSchema.optional(),
 
-  // Intérêts d'emprunt personnels (attestation bancaire)
-  personalLoanInterests: ConfidentNumberSchema.optional(),
+  // Clé géographique (pourcentages par pays)
+  geographicBreakdown: z.array(SCPICountryBreakdownSchema).optional(),
 
-  // Reports déclaration principale 2042
+  // Reports 2042
   exemptIncome: ConfidentNumberSchema.optional(),        // 4EA
-  microFoncierExempt: ConfidentNumberSchema.optional(),  // 4EB
   foreignTaxCredit: ConfidentNumberSchema.optional(),    // 8TK
 
-  // Ventilation par pays
-  incomeByCountry: z.array(SCPICountryIncomeSchema).optional(),
-
-  // Prélèvements sociaux
-  socialContributions: ConfidentNumberSchema.optional(),
+  // RCM associés à la SCPI
+  rcmInterests: ConfidentNumberSchema.optional(),        // 2TR
+  rcmCsgDeductible: ConfidentNumberSchema.optional(),    // 2CG / 2BH
+  rcmWithholdingTax: ConfidentNumberSchema.optional(),   // 2CK
+  capitalGains: ConfidentNumberSchema.optional(),        // 3VZ
 
   // IFI
   ifiValuePerShare: ConfidentNumberSchema.optional(),
-  numberOfShares: ConfidentNumberSchema.optional(),
 
-  // DEPRECATED — remplacé par personalLoanInterests / scpiLoanInterests.
-  // Conservé optionnel pour ne pas invalider les déclarations existantes.
+  // PS
+  socialContributions: ConfidentNumberSchema.optional(),
+
+  // DEPRECATED — conservé pour compat.
   deductibleInterests: ConfidentNumberSchema.optional(),
 });
 
@@ -172,6 +178,16 @@ export const LifeInsuranceEntrySchema = z.object({
   withdrawals: ConfidentNumberSchema.optional(),
   taxableShare: ConfidentNumberSchema.optional(),
   withholdingTax: ConfidentNumberSchema.optional(),
+});
+
+export const LoanEntrySchema = z.object({
+  bank: z.string(),
+  loanNumber: z.string().optional(),
+  principal: ConfidentNumberSchema.optional(),
+  firstDrawdownDate: z.string().optional(),
+  annualInterests: ConfidentNumberSchema,
+  year: z.number().int().optional(),
+  linkedScpis: z.array(z.string()).default([]),
 });
 
 export const GenericCategoryEntrySchema = z.object({
@@ -196,6 +212,7 @@ export const ExtractedDataSchema = z.object({
   ifu: z.array(IFUEntrySchema).default([]),
   scpi: z.array(SCPIEntrySchema).default([]),
   lifeInsurance: z.array(LifeInsuranceEntrySchema).default([]),
+  loans: z.array(LoanEntrySchema).optional(),
   realEstateIncome: GenericCategoryEntrySchema.optional(),
   dividends: GenericCategoryEntrySchema.optional(),
   interests: GenericCategoryEntrySchema.optional(),
