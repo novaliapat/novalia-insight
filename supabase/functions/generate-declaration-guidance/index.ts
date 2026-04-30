@@ -288,3 +288,15 @@ function json(payload: unknown, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+// Post-processing : arrondi CGI art. 193 — replace les "amount": <float> par des entiers
+// dans le JSON sérialisé du guidance, puis re-parse.
+function roundAllAmounts<T>(guidance: T): T {
+  const json = JSON.stringify(guidance);
+  const fixed = json.replace(
+    /("amount"\s*:\s*)(-?\d+\.\d+)/g,
+    (_, prefix, num) => prefix + Math.round(Number(num)),
+  );
+  return JSON.parse(fixed) as T;
+}
+
