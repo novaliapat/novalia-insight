@@ -594,6 +594,75 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
 // ─────────────────────────────────────────────────────────────────────────
 // 4. Construction des propositions (catalogue + montants + sources)
 // ─────────────────────────────────────────────────────────────────────────
+// Surcharges de libellés/descriptions pour rendre le guide accessible à un
+// stagiaire sans expérience fiscale. Override appliqué après le catalogue.
+const FRIENDLY_LABELS: Record<string, { label: string; description: string }> = {
+  "2044::Ligne 211": {
+    label: "Ligne 111/211 — Revenus bruts de votre SCPI",
+    description: "Tapez le total des revenus fonciers bruts indiqué sur le relevé fiscal de votre SCPI (page 4, ligne 111 colonne Total).",
+  },
+  "2044::Ligne 230": {
+    label: "Ligne 112/230 — Frais et charges de la SCPI",
+    description: "Frais de gestion prélevés par la société de gestion. Reportez le montant de la ligne 112 du relevé fiscal.",
+  },
+  "2044::Ligne 250": {
+    label: "Ligne 113/250 — Intérêts d'emprunt (SCPI + votre crédit perso)",
+    description: "Total = intérêts payés par la SCPI + votre part des intérêts personnels pour les pays « crédit d'impôt ».",
+  },
+  "2044::Ligne 420": {
+    label: "Ligne 114/420 — Résultat foncier (calcul automatique)",
+    description: "Vérifiez : revenus bruts − frais − intérêts = résultat. Si négatif sur la part étrangère, indiquez 0.",
+  },
+  "2042::4BA": {
+    label: "Case 4BA — Bénéfice foncier net",
+    description: "Reporté automatiquement depuis la 2044. Vérifiez que le montant correspond à la ligne 114.",
+  },
+  "2042::4BL": {
+    label: "Case 4BL — Bénéfice foncier étranger (crédit d'impôt)",
+    description: "Même montant que 4BA. C'est normal que 4BL soit inférieur à 8TK quand vous avez un emprunt.",
+  },
+  "2042::4BC": {
+    label: "Case 4BC — Déficit foncier",
+    description: "À renseigner uniquement si le résultat foncier est négatif.",
+  },
+  "2042::4EA": {
+    label: "Case 4EA — Revenus exonérés (Belgique, Pays-Bas, Irlande...)",
+    description: "Revenus non imposés en France mais pris en compte pour calculer votre taux d'imposition (« taux effectif »).",
+  },
+  "2042::8TK": {
+    label: "Case 8TK — Crédit d'impôt étranger (NE PAS MODIFIER)",
+    description: "Case pré-remplie par l'administration. Ce montant compense la double imposition. Ne le changez pas.",
+  },
+  "2042::2TR": {
+    label: "Case 2TR — Intérêts de placement (SCPI / IFU)",
+    description: "Normalement pré-rempli. Vérifiez que le montant correspond à votre relevé (page 3 du relevé SCPI ou IFU).",
+  },
+  "2042::2DC": {
+    label: "Case 2DC — Dividendes éligibles à l'abattement",
+    description: "Pré-rempli depuis votre IFU. Vérifiez que le montant correspond à votre relevé.",
+  },
+  "2042::2CK": {
+    label: "Case 2CK — Crédit d'impôt prélèvement à la source",
+    description: "Pré-rempli. Acompte déjà prélevé sur vos intérêts/dividendes. Sera déduit de votre impôt final.",
+  },
+  "2042::2CG": {
+    label: "Case 2CG — CSG déductible sur intérêts",
+    description: "Pré-rempli. Sera déductible l'année prochaine si vous optez pour le barème (case 2OP).",
+  },
+  "2042::2BH": {
+    label: "Case 2BH — Revenus déjà soumis aux prélèvements sociaux",
+    description: "À cocher si vous optez pour le barème (2OP) et que vos revenus mobiliers ont déjà subi les prélèvements sociaux.",
+  },
+  "2042::2AB": {
+    label: "Case 2AB — Crédit d'impôt retenue étrangère",
+    description: "Contrepartie de la retenue à la source sur les revenus mobiliers étrangers (dividendes / intérêts).",
+  },
+  "2042::2CH": {
+    label: "Case 2CH — Produits d'assurance-vie (≥ 8 ans)",
+    description: "Part imposable des rachats sur contrats de plus de 8 ans, après abattement.",
+  },
+};
+
 function buildProposalsFromMapping(args: {
   detectedCategories: TaxCategory[];
   amountByBox: AmountMap;
@@ -641,13 +710,14 @@ function buildProposalsFromMapping(args: {
       requiresManualReview = entry.status !== "confirmed";
     }
 
+    const friendly = FRIENDLY_LABELS[k];
     proposals.push({
       formId: entry.formId,
       boxOrLine: entry.boxOrLine,
-      label: entry.label,
-      amount,
+      label: friendly?.label ?? entry.label,
+      amount: amount != null ? Math.round(amount) : null,
       category: entry.category,
-      explanation: entry.description,
+      explanation: friendly?.description ?? entry.description,
       confidence,
       status,
       ragSources,
