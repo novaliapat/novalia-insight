@@ -288,6 +288,27 @@ export const DeclarationGuidancePanel = ({
                   </TabsContent>
 
                   <TabsContent value="2044" className="mt-4 space-y-4">
+                    {scpiInfo.length > 0 && (
+                      <Card className="p-4 bg-accent/5 border-accent/20">
+                        <div className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-accent" />
+                          Informations à reporter en tête de la 2044
+                        </div>
+                        <div className="text-sm text-muted-foreground space-y-2">
+                          {scpiInfo.map((s, i) => (
+                            <div key={i} className="space-y-0.5">
+                              <div>Nom de la SCPI : <strong className="text-foreground">{s.scpiName}</strong></div>
+                              {s.address && (
+                                <div>Adresse : <strong className="text-foreground">{s.address}</strong></div>
+                              )}
+                              {s.numberOfShares != null && (
+                                <div>Nombre de parts : <strong className="text-foreground">{s.numberOfShares}</strong></div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    )}
                     {stepsByForm["2044"].length > 0 ? (
                       <DeclarationStepTimeline steps={stepsByForm["2044"]} />
                     ) : (
