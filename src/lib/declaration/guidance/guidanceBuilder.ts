@@ -135,10 +135,19 @@ export function deriveEffectiveCategories(d: ExtractedData): TaxCategory[] {
 
   const scpi = d.scpi ?? [];
   if (scpi.length > 0) set.add("scpi" as TaxCategory);
-  if (scpi.some((s) => (s.deductibleInterests?.value ?? 0) > 0)) {
+  if (scpi.some((s) =>
+    (s.deductibleInterests?.value ?? 0) > 0 ||
+    (s.scpiLoanInterests?.value ?? 0) > 0 ||
+    (s.personalLoanInterests?.value ?? 0) > 0,
+  )) {
     set.add("deductible_expenses" as TaxCategory);
   }
-  if (scpi.some((s) => (s.foreignIncome?.value ?? 0) > 0)) {
+  if (scpi.some((s) =>
+    (s.foreignIncome?.value ?? 0) > 0 ||
+    (s.foreignTaxCredit?.value ?? 0) > 0 ||
+    (s.exemptIncome?.value ?? 0) > 0 ||
+    (s.incomeByCountry?.length ?? 0) > 0,
+  )) {
     set.add("foreign_accounts" as TaxCategory);
   }
 
@@ -320,28 +329,80 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
   const scpi = d.scpi ?? [];
   const scpiFr = sumOpt(...scpi.map((s) => s.frenchIncome?.value));
   const scpiForeign = sumOpt(...scpi.map((s) => s.foreignIncome?.value));
-  const scpiInterests = sumOpt(...scpi.map((s) => s.deductibleInterests?.value));
+  const scpiNet = sumOpt(...scpi.map((s) => s.netIncome?.value));
+  const scpiGross = sumOpt(...scpi.map((s) => s.grossIncome?.value));
+  const scpiExpenses = sumOpt(...scpi.map((s) => s.expenses?.value));
+  // Cumul des intérêts d'emprunt = SCPI (ligne 113) + personnels
+  const scpiOwnInterests = sumOpt(...scpi.map((s) => s.scpiLoanInterests?.value));
+  const personalInterests = sumOpt(...scpi.map((s) => s.personalLoanInterests?.value));
+  const legacyInterests = sumOpt(...scpi.map((s) => s.deductibleInterests?.value));
+  // Si on a des nouveaux champs, on les utilise, sinon fallback legacy.
+  const totalLine250 = (scpiOwnInterests + personalInterests) > 0
+    ? scpiOwnInterests + personalInterests
+    : legacyInterests;
+  const exemptIncome = sumOpt(...scpi.map((s) => s.exemptIncome?.value));
+  const microFoncierExempt = sumOpt(...scpi.map((s) => s.microFoncierExempt?.value));
+  const foreignTaxCredit = sumOpt(...scpi.map((s) => s.foreignTaxCredit?.value));
 
   if (scpiFr > 0) {
     amount.set(key("2044", "Ligne 211"), scpiFr);
-    // 4BA = report depuis 2044 (résultat foncier net), pas une simple recopie des recettes brutes
+  }
+  // Bénéfice/déficit foncier net — priorité au netIncome explicite,
+  // sinon calcul gross - expenses - intérêts SCPI.
+  const computedNet = scpiGross > 0
+    ? scpiGross - scpiExpenses - scpiOwnInterests
+    : 0;
+  const netForLine420 = scpiNet !== 0 ? scpiNet : computedNet;
+  if (netForLine420 !== 0) {
+    amount.set(key("2044", "Ligne 420"), netForLine420);
+    if (netForLine420 > 0) amount.set(key("2042", "4BA"), netForLine420);
+    else amount.set(key("2042", "4BC"), Math.abs(netForLine420));
+  } else if (scpiFr > 0) {
     reviewHints.set(
       key("2042", "4BA"),
       "Report depuis la ligne 420 de la 2044 (résultat foncier net après charges et intérêts d'emprunt). Ne pas y reporter directement les recettes brutes SCPI.",
     );
   }
+
   if (scpiForeign > 0) {
     reviewHints.set(
       key("2042", "4BL"),
       `Revenus fonciers étrangers SCPI (${scpiForeign.toFixed(2)} €) : à reporter en 4BL si convention prévoit crédit d'impôt = IR français. Vérifier la convention applicable.`,
     );
+  }
+  if (foreignTaxCredit > 0) {
+    amount.set(key("2042", "8TK"), foreignTaxCredit);
+  } else if (scpiForeign > 0) {
     reviewHints.set(
       key("2042", "8TK"),
       `Revenus étrangers (${scpiForeign.toFixed(2)} €) ouvrant droit à crédit d'impôt = IR français : à reporter en 8TK selon la convention. Vérifier impérativement la convention bilatérale.`,
     );
   }
-  if (scpiInterests > 0) {
-    amount.set(key("2044", "Ligne 250"), scpiInterests);
+  if (exemptIncome > 0) {
+    amount.set(key("2042", "4EA"), exemptIncome);
+  }
+  if (microFoncierExempt > 0) {
+    amount.set(key("2042", "4EB"), microFoncierExempt);
+  }
+  if (totalLine250 > 0) {
+    amount.set(key("2044", "Ligne 250"), totalLine250);
+    if (scpiOwnInterests > 0 && personalInterests > 0) {
+      reviewHints.set(
+        key("2044", "Ligne 250"),
+        `Cumul intérêts d'emprunt : ${scpiOwnInterests.toFixed(2)} € (SCPI ligne 113) + ${personalInterests.toFixed(2)} € (emprunt personnel) = ${totalLine250.toFixed(2)} €. Vérifier le total avant report.`,
+      );
+    }
+  }
+
+  // Ventilation par pays → annexe 2047 (review manuel par pays)
+  for (const s of scpi) {
+    for (const c of s.incomeByCountry ?? []) {
+      const treatment = c.taxTreatment ?? "à confirmer";
+      reviewHints.set(
+        key("2047", `Pays ${c.country}`),
+        `Revenus ${c.country} (${c.income.value.toFixed(2)} €, traitement: ${treatment}). À reporter en 2047 selon la convention fiscale bilatérale.`,
+      );
+    }
   }
 
   // ── Assurance-vie ──────────────────────────────────────────────────
