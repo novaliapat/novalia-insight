@@ -122,21 +122,21 @@ export function buildDeclarationSteps(input: BuildStepsInput): DeclarationStep[]
   // BLOC 5 — récapitulatif
   if (input.proposals.length > 0) {
     const statusLabel: Record<PrefillStatus, string> = {
-      to_enter: "À saisir",
-      prefilled: "Pré-rempli (vérifier)",
-      auto_report: "Report automatique",
-      do_not_modify: "Ne pas modifier",
+      to_enter: "À saisir par vous",
+      prefilled: "Pré-rempli, vérifiez",
+      auto_report: "Reporté automatiquement",
+      do_not_modify: "⚠️ Ne pas modifier",
     };
     const lines = input.proposals.map((p) => {
       const status = computePrefillStatus(p.formId, p.boxOrLine);
       const amt = p.amount != null ? `${Math.round(p.amount)} €` : "—";
-      return `${p.formId} • ${p.boxOrLine} — ${p.label} : ${amt} (${statusLabel[status]})`;
+      return `${p.formId} case ${p.boxOrLine} : ${amt} — ${statusLabel[status]}`;
     });
 
     steps.push({
       id: "recap-table",
       order: order++,
-      title: "Tableau récapitulatif des cases",
+      title: "Tableau récapitulatif — toutes vos cases",
       description: lines.join("\n"),
       formId: "recap",
       actionType: "verify_amount",
@@ -144,17 +144,35 @@ export function buildDeclarationSteps(input: BuildStepsInput): DeclarationStep[]
       requiresManualReview: false,
     });
 
+    const get = (formId: string, box: string): number | null => {
+      const p = input.proposals.find((x) => x.formId === formId && x.boxOrLine === box);
+      return p?.amount != null ? Math.round(p.amount) : null;
+    };
+    const line250 = get("2044", "Ligne 250");
+    const tk8 = get("2042", "8TK");
+    const bl4 = get("2042", "4BL");
+    const ea4 = get("2042", "4EA");
+
+    const checks: string[] = [];
+    if (line250 != null) {
+      checks.push(`✅ Vérifiez que le total des intérêts déclarés (${line250} €) correspond bien à votre attestation bancaire.`);
+    }
+    if (tk8 != null) {
+      checks.push(`✅ La case 8TK (${tk8} €) est pré-remplie : ne la modifiez pas.`);
+    }
+    if (bl4 != null && tk8 != null) {
+      checks.push(`✅ Normal : la case 4BL (${bl4} €) est inférieure à 8TK (${tk8} €) car vous avez un emprunt.`);
+    }
+    if (ea4 != null) {
+      checks.push(`✅ La case 4EA (${ea4} €) reflète vos revenus exonérés après déduction des intérêts « taux effectif ».`);
+    }
+    checks.push("✅ Conservez tous vos justificatifs : relevés fiscaux SCPI, attestations bancaires, IFU.");
+
     steps.push({
       id: "recap-checklist",
       order: order++,
       title: "Checklist de validation finale",
-      description: [
-        "Σ intérêts d'emprunt répartis = total des attestations bancaires.",
-        "Ligne 114 (résultat 2044) non négative sur la part étrangère.",
-        "8TK reste pré-remplie et non modifiée (égale au total section 6 de la 2047).",
-        "4BL ≤ 8TK si emprunt personnel (le NET ne peut excéder le BRUT).",
-        "Toutes les pièces justificatives (relevés SCPI, attestations bancaires, IFU) sont conservées.",
-      ].join("\n"),
+      description: checks.join("\n"),
       formId: "recap",
       actionType: "verify_amount",
       ragSources: [],
