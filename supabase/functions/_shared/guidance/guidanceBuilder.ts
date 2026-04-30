@@ -131,10 +131,19 @@ export function deriveEffectiveCategories(d: ExtractedData): TaxCategory[] {
 
   const scpi = d.scpi ?? [];
   if (scpi.length > 0) set.add("scpi" as TaxCategory);
-  if (scpi.some((s) => (s.deductibleInterests?.value ?? 0) > 0)) {
+  if (scpi.some((s) =>
+    (s.deductibleInterests?.value ?? 0) > 0 ||
+    (s.scpiLoanInterests?.value ?? 0) > 0 ||
+    (s.personalLoanInterests?.value ?? 0) > 0,
+  )) {
     set.add("deductible_expenses" as TaxCategory);
   }
-  if (scpi.some((s) => (s.foreignIncome?.value ?? 0) > 0)) {
+  if (scpi.some((s) =>
+    (s.foreignIncome?.value ?? 0) > 0 ||
+    (s.foreignTaxCredit?.value ?? 0) > 0 ||
+    (s.exemptIncome?.value ?? 0) > 0 ||
+    (s.incomeByCountry?.length ?? 0) > 0,
+  )) {
     set.add("foreign_accounts" as TaxCategory);
   }
 
@@ -165,11 +174,20 @@ export function detectSituations(d: ExtractedData): {
   if (scpi.length > 0) {
     situations.push("Revenus fonciers issus de SCPI.");
     hasRealEstate = true;
-    if (scpi.some((s) => (s.foreignIncome?.value ?? 0) > 0)) {
+    if (scpi.some((s) =>
+      (s.foreignIncome?.value ?? 0) > 0 ||
+      (s.foreignTaxCredit?.value ?? 0) > 0 ||
+      (s.exemptIncome?.value ?? 0) > 0 ||
+      (s.incomeByCountry?.length ?? 0) > 0,
+    )) {
       situations.push("Revenus de SCPI de source étrangère (convention fiscale à appliquer).");
       hasForeign = true;
     }
-    if (scpi.some((s) => (s.deductibleInterests?.value ?? 0) > 0)) {
+    if (scpi.some((s) =>
+      (s.deductibleInterests?.value ?? 0) > 0 ||
+      (s.scpiLoanInterests?.value ?? 0) > 0 ||
+      (s.personalLoanInterests?.value ?? 0) > 0,
+    )) {
       situations.push("Intérêts d'emprunt liés aux investissements SCPI/fonciers.");
     }
   }
