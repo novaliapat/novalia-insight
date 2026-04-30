@@ -113,9 +113,27 @@ export function flattenEvidences(data: {
     capitalGains: "Plus-values",
     withholdingTax: "Prélèvement à la source / PFU",
     socialContributions: "Prélèvements sociaux",
-    frenchIncome: "Revenus France",
-    foreignIncome: "Revenus étrangers",
-    deductibleInterests: "Intérêts déductibles",
+    csgDeductible: "CSG déductible (2BH/2CG)",
+    // SCPI — annexe 2044
+    grossIncome: "Revenus bruts (ligne 111)",
+    frenchIncome: "dont France",
+    foreignIncome: "dont Étranger",
+    expenses: "Frais et charges (ligne 112)",
+    scpiLoanInterests: "Intérêts emprunt SCPI (ligne 113)",
+    netIncome: "Bénéfice/Déficit (ligne 114)",
+    personalLoanInterests: "Intérêts emprunt personnels",
+    // SCPI — reports 2042
+    exemptIncome: "Revenus exonérés taux effectif (4EA)",
+    microFoncierExempt: "Micro-foncier exonéré (4EB)",
+    foreignTaxCredit: "Crédit d'impôt = IR français (8TK)",
+    // SCPI — IFI
+    ifiValuePerShare: "Valeur IFI par part",
+    numberOfShares: "Nombre de parts",
+    // Deprecated
+    deductibleInterests: "Intérêts déductibles (legacy)",
+    // Assurance-vie
+    frenchIncomeLegacy: "Revenus France",
+    foreignIncomeLegacy: "Revenus étrangers",
     withdrawals: "Rachats",
     taxableShare: "Part imposable",
   };
