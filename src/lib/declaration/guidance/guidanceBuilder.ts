@@ -20,7 +20,7 @@ import type {
   TaxCategory,
   ExtractedData,
   ConfidenceLevel,
-} from "../contracts/extractionContracts.ts";
+} from "../contracts/extractedDataContract.ts";
 import { ANNEX_RULES_2025 } from "../forms/2025/annexCatalog.ts";
 import { FORMS_CATALOG_2025 } from "../forms/2025/formsCatalog.ts";
 import {
