@@ -168,28 +168,110 @@ type SCPIConfidentField =
         <Card className="p-5">
           <h3 className="font-display text-lg font-semibold mb-4">SCPI</h3>
           <div className="space-y-4">
-            {draft.scpi.map((entry, i) => (
+            {draft.scpi.map((entry, i) => {
+              const fields: Array<{ key: SCPIConfidentField; label: string }> = [
+                { key: "frenchIncome", label: "Revenus France (€)" },
+                { key: "foreignIncome", label: "Revenus étrangers (€)" },
+                { key: "grossIncome", label: "Revenus bruts (ligne 111)" },
+                { key: "expenses", label: "Frais et charges (ligne 112)" },
+                { key: "scpiLoanInterests", label: "Intérêts emprunt SCPI (ligne 113)" },
+                { key: "netIncome", label: "Bénéfice / Déficit (ligne 114)" },
+                { key: "exemptIncome", label: "Revenus exonérés taux effectif (4EA)" },
+                { key: "foreignTaxCredit", label: "Crédit d'impôt étranger (8TK)" },
+                { key: "rcmInterests", label: "Intérêts placement (2TR)" },
+                { key: "rcmCsgDeductible", label: "CSG déductible (2CG/2BH)" },
+                { key: "rcmWithholdingTax", label: "Crédit d'impôt PFU (2CK)" },
+                { key: "capitalGains", label: "Plus-values (3VZ)" },
+                { key: "numberOfShares", label: "Nombre de parts" },
+              ];
+              return (
+                <div key={i} className="space-y-3 pb-4 border-b last:border-0 last:pb-0">
+                  <div className="font-medium text-sm">{entry.scpiName}</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {fields.map(({ key, label }) => {
+                      const f = (entry as unknown as Record<string, { value: number } | undefined>)[key];
+                      if (f?.value == null) return null;
+                      return (
+                        <div key={key}>
+                          <Label className="text-xs">{label}</Label>
+                          <Input
+                            type="number"
+                            value={f.value}
+                            onChange={(e) => updateSCPI(i, key, e.target.value)}
+                          />
+                        </div>
+                      );
+                    })}
+                    {entry.ifiValuePerShare?.value != null && (
+                      <div>
+                        <Label className="text-xs">Valeur IFI / part</Label>
+                        <Input
+                          type="number"
+                          value={entry.ifiValuePerShare.value}
+                          onChange={(e) => updateSCPIIfi(i, e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {entry.geographicBreakdown && entry.geographicBreakdown.length > 0 && (
+                    <div className="mt-3 p-3 rounded border bg-muted/20">
+                      <div className="text-xs font-medium text-muted-foreground mb-2">
+                        Clé géographique
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 text-xs">
+                        {entry.geographicBreakdown.map((g, gi) => (
+                          <div key={gi} className="flex justify-between">
+                            <span>{g.country}</span>
+                            <span className="font-mono">{g.percentage}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {(draft.loans?.length ?? 0) > 0 && (
+        <Card className="p-5">
+          <h3 className="font-display text-lg font-semibold mb-4">Emprunts</h3>
+          <div className="space-y-4">
+            {(draft.loans ?? []).map((loan, i) => (
               <div key={i} className="space-y-3 pb-4 border-b last:border-0 last:pb-0">
-                <div className="font-medium text-sm">{entry.scpiName}</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {entry.frenchIncome && (
+                  <div>
+                    <Label className="text-xs">Banque</Label>
+                    <Input
+                      type="text"
+                      value={loan.bank}
+                      onChange={(e) => updateLoan(i, "bank", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Intérêts annuels (€)</Label>
+                    <Input
+                      type="number"
+                      value={loan.annualInterests.value}
+                      onChange={(e) => updateLoan(i, "annualInterests", e.target.value)}
+                    />
+                  </div>
+                  {loan.principal?.value != null && (
                     <div>
-                      <Label className="text-xs">Revenus France (€)</Label>
+                      <Label className="text-xs">Capital emprunté (€)</Label>
                       <Input
                         type="number"
-                        value={entry.frenchIncome.value}
-                        onChange={(e) => updateSCPI(i, "frenchIncome", e.target.value)}
+                        value={loan.principal.value}
+                        onChange={(e) => updateLoan(i, "principal", e.target.value)}
                       />
                     </div>
                   )}
-                  {entry.foreignIncome && (
+                  {loan.linkedScpis?.length > 0 && (
                     <div>
-                      <Label className="text-xs">Revenus étrangers (€)</Label>
-                      <Input
-                        type="number"
-                        value={entry.foreignIncome.value}
-                        onChange={(e) => updateSCPI(i, "foreignIncome", e.target.value)}
-                      />
+                      <Label className="text-xs">SCPI financées</Label>
+                      <div className="text-sm mt-2">{loan.linkedScpis.join(", ")}</div>
                     </div>
                   )}
                 </div>
