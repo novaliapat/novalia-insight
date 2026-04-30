@@ -454,31 +454,56 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
 
   // ── SCPI ───────────────────────────────────────────────────────────
   const scpi = d.scpi ?? [];
+  const loans = d.loans ?? [];
   const scpiFr = sumOpt(...scpi.map((s) => s.frenchIncome?.value));
   const scpiForeign = sumOpt(...scpi.map((s) => s.foreignIncome?.value));
   const scpiNet = sumOpt(...scpi.map((s) => s.netIncome?.value));
   const scpiGross = sumOpt(...scpi.map((s) => s.grossIncome?.value));
   const scpiExpenses = sumOpt(...scpi.map((s) => s.expenses?.value));
   const scpiOwnInterests = sumOpt(...scpi.map((s) => s.scpiLoanInterests?.value));
-  const personalInterests = sumOpt(...(d.loans ?? []).map((l) => l.annualInterests?.value));
   const legacyInterests = sumOpt(...scpi.map((s) => s.deductibleInterests?.value));
-  const totalLine250 = (scpiOwnInterests + personalInterests) > 0
-    ? scpiOwnInterests + personalInterests
-    : legacyInterests;
-  const exemptIncome = sumOpt(...scpi.map((s) => s.exemptIncome?.value));
+  const exemptIncomeRaw = sumOpt(...scpi.map((s) => s.exemptIncome?.value));
   const foreignTaxCredit = sumOpt(...scpi.map((s) => s.foreignTaxCredit?.value));
+
+  // Cascade de ventilation des intérêts personnels (Arkéa & co)
+  const allocation = allocatePersonalLoanInterests(loans, scpi);
+  const personalCi = allocation.totalCi;
+  const personalTe = allocation.totalTe;
+  const personalTotal = allocation.totalPersonal;
+  const fallbackPersonal = personalTotal === 0
+    ? sumOpt(...loans.map((l) => l.annualInterests?.value))
+    : 0;
+
+  // Ligne 113 (= ligne 250 sur 2044) : intérêts SCPI + part CI des emprunts perso
+  const totalLine113 = scpiOwnInterests + personalCi + fallbackPersonal > 0
+    ? scpiOwnInterests + personalCi + fallbackPersonal
+    : legacyInterests;
 
   if (scpiFr > 0) {
     amount.set(key("2044", "Ligne 211"), scpiFr);
   }
+
+  // Ligne 114 / 420 : recalcul du résultat NET après cascade
   const computedNet = scpiGross > 0
-    ? scpiGross - scpiExpenses - scpiOwnInterests
+    ? Math.max(0, scpiGross - scpiExpenses - totalLine113)
     : 0;
-  const netForLine420 = scpiNet !== 0 ? scpiNet : computedNet;
+  const netForLine420 = computedNet > 0
+    ? computedNet
+    : (scpiNet !== 0 ? scpiNet : 0);
+
   if (netForLine420 !== 0) {
     amount.set(key("2044", "Ligne 420"), netForLine420);
-    if (netForLine420 > 0) amount.set(key("2042", "4BA"), netForLine420);
-    else amount.set(key("2042", "4BC"), Math.abs(netForLine420));
+    if (netForLine420 > 0) {
+      amount.set(key("2042", "4BA"), netForLine420);
+      // 4BL = résultat NET (≠ 8TK qui reste BRUT pré-rempli)
+      amount.set(key("2042", "4BL"), netForLine420);
+      reviewHints.set(
+        key("2042", "4BL"),
+        `Résultat NET après intérêts personnels (${netForLine420} €). ≠ 8TK (${foreignTaxCredit} € brut pré-rempli, ne pas modifier).`,
+      );
+    } else {
+      amount.set(key("2042", "4BC"), Math.abs(netForLine420));
+    }
   } else if (scpiFr > 0) {
     reviewHints.set(
       key("2042", "4BA"),
@@ -486,12 +511,7 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
     );
   }
 
-  if (scpiForeign > 0) {
-    reviewHints.set(
-      key("2042", "4BL"),
-      `Revenus fonciers étrangers SCPI (${scpiForeign.toFixed(2)} €) : à reporter en 4BL si convention prévoit crédit d'impôt = IR français. Vérifier la convention applicable.`,
-    );
-  }
+  // 8TK : crédit d'impôt étranger BRUT inchangé
   if (foreignTaxCredit > 0) {
     amount.set(key("2042", "8TK"), foreignTaxCredit);
   } else if (scpiForeign > 0) {
@@ -500,15 +520,33 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
       `Revenus étrangers (${scpiForeign.toFixed(2)} €) ouvrant droit à crédit d'impôt = IR français : à reporter en 8TK selon la convention. Vérifier impérativement la convention bilatérale.`,
     );
   }
-  if (exemptIncome > 0) {
-    amount.set(key("2042", "4EA"), exemptIncome);
+
+  // 4EA : revenus exonérés MOINS intérêts personnels bucket TE
+  const adjusted4EA = Math.max(0, exemptIncomeRaw - personalTe);
+  if (exemptIncomeRaw > 0) {
+    amount.set(key("2042", "4EA"), adjusted4EA);
+    if (personalTe > 0) {
+      const teBreak = formatBucketBreakdown(allocation.perScpi, "TE");
+      reviewHints.set(
+        key("2042", "4EA"),
+        `Revenus exonérés bruts (${exemptIncomeRaw} €) − intérêts personnels bucket TE (${personalTe} €) = ${adjusted4EA} €. Ventilation TE : ${teBreak} = ${(personalTotal > 0 ? (personalTe / personalTotal * 100) : 0).toFixed(2)}% × ${personalTotal} € = ${personalTe} €.`,
+      );
+    }
   }
-  if (totalLine250 > 0) {
-    amount.set(key("2044", "Ligne 250"), totalLine250);
-    if (scpiOwnInterests > 0 && personalInterests > 0) {
+
+  if (totalLine113 > 0) {
+    amount.set(key("2044", "Ligne 250"), totalLine113);
+    if (personalCi > 0 || personalTotal > 0) {
+      const ciBreak = formatBucketBreakdown(allocation.perScpi, "CI");
+      const ciPct = personalTotal > 0 ? (personalCi / personalTotal * 100) : 0;
       reviewHints.set(
         key("2044", "Ligne 250"),
-        `Cumul intérêts d'emprunt : ${scpiOwnInterests.toFixed(2)} € (SCPI ligne 113) + ${personalInterests.toFixed(2)} € (emprunt personnel) = ${totalLine250.toFixed(2)} €. Vérifier le total avant report.`,
+        `Intérêts SCPI (${scpiOwnInterests} €) + intérêts personnels bucket CI (${personalCi} €) = ${totalLine113} €. Ventilation CI : ${ciBreak || "(aucun pays CI)"} = ${ciPct.toFixed(2)}% × ${personalTotal} € = ${personalCi} €.`,
+      );
+    } else if (scpiOwnInterests > 0 && fallbackPersonal > 0) {
+      reviewHints.set(
+        key("2044", "Ligne 250"),
+        `Cumul intérêts d'emprunt : ${scpiOwnInterests.toFixed(2)} € (SCPI) + ${fallbackPersonal.toFixed(2)} € (emprunt personnel non ventilable) = ${totalLine113.toFixed(2)} €. Vérifier le total avant report.`,
       );
     }
   }
