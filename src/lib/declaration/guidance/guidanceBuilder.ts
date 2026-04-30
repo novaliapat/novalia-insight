@@ -180,7 +180,8 @@ export function detectSituations(d: ExtractedData): {
       (s.foreignIncome?.value ?? 0) > 0 ||
       (s.foreignTaxCredit?.value ?? 0) > 0 ||
       (s.exemptIncome?.value ?? 0) > 0 ||
-      (s.incomeByCountry?.length ?? 0) > 0,
+      (((s as { incomeByCountry?: unknown[] }).incomeByCountry?.length ?? 0) > 0) ||
+      ((s.geographicBreakdown?.length ?? 0) > 0),
     )) {
       situations.push("Revenus de SCPI de source étrangère (convention fiscale à appliquer).");
       hasForeign = true;
@@ -188,7 +189,7 @@ export function detectSituations(d: ExtractedData): {
     if (scpi.some((s) =>
       (s.deductibleInterests?.value ?? 0) > 0 ||
       (s.scpiLoanInterests?.value ?? 0) > 0 ||
-      (s.personalLoanInterests?.value ?? 0) > 0,
+      (((s as { personalLoanInterests?: { value?: number } }).personalLoanInterests?.value ?? 0) > 0),
     )) {
       situations.push("Intérêts d'emprunt liés aux investissements SCPI/fonciers.");
     }
