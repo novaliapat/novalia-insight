@@ -126,6 +126,9 @@ export function flattenEvidences(data: {
     exemptIncome: "Revenus exonérés taux effectif (4EA)",
     microFoncierExempt: "Micro-foncier exonéré (4EB)",
     foreignTaxCredit: "Crédit d'impôt = IR français (8TK)",
+    rcmInterests: "Intérêts placement (2TR)",
+    rcmCsgDeductible: "CSG déductible (2CG/2BH)",
+    rcmWithholdingTax: "Crédit d'impôt PFU (2CK)",
     // SCPI — IFI
     ifiValuePerShare: "Valeur IFI par part",
     numberOfShares: "Nombre de parts",
