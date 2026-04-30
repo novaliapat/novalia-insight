@@ -130,19 +130,21 @@ export function deriveEffectiveCategories(d: ExtractedData): TaxCategory[] {
   if (ifu.some((i) => (i.interests?.value ?? 0) > 0)) set.add("interests" as TaxCategory);
 
   const scpi = d.scpi ?? [];
+  const loans = d.loans ?? [];
   if (scpi.length > 0) set.add("scpi" as TaxCategory);
-  if (scpi.some((s) =>
-    (s.deductibleInterests?.value ?? 0) > 0 ||
-    (s.scpiLoanInterests?.value ?? 0) > 0 ||
-    (s.personalLoanInterests?.value ?? 0) > 0,
-  )) {
+  if (
+    scpi.some((s) =>
+      (s.deductibleInterests?.value ?? 0) > 0 ||
+      (s.scpiLoanInterests?.value ?? 0) > 0,
+    ) || loans.some((l) => (l.annualInterests?.value ?? 0) > 0)
+  ) {
     set.add("deductible_expenses" as TaxCategory);
   }
   if (scpi.some((s) =>
     (s.foreignIncome?.value ?? 0) > 0 ||
     (s.foreignTaxCredit?.value ?? 0) > 0 ||
     (s.exemptIncome?.value ?? 0) > 0 ||
-    (s.incomeByCountry?.length ?? 0) > 0,
+    ((s.geographicBreakdown ?? []).length > 0),
   )) {
     set.add("foreign_accounts" as TaxCategory);
   }
@@ -338,13 +340,12 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
   const scpiGross = sumOpt(...scpi.map((s) => s.grossIncome?.value));
   const scpiExpenses = sumOpt(...scpi.map((s) => s.expenses?.value));
   const scpiOwnInterests = sumOpt(...scpi.map((s) => s.scpiLoanInterests?.value));
-  const personalInterests = sumOpt(...scpi.map((s) => s.personalLoanInterests?.value));
+  const personalInterests = sumOpt(...(d.loans ?? []).map((l) => l.annualInterests?.value));
   const legacyInterests = sumOpt(...scpi.map((s) => s.deductibleInterests?.value));
   const totalLine250 = (scpiOwnInterests + personalInterests) > 0
     ? scpiOwnInterests + personalInterests
     : legacyInterests;
   const exemptIncome = sumOpt(...scpi.map((s) => s.exemptIncome?.value));
-  const microFoncierExempt = sumOpt(...scpi.map((s) => s.microFoncierExempt?.value));
   const foreignTaxCredit = sumOpt(...scpi.map((s) => s.foreignTaxCredit?.value));
 
   if (scpiFr > 0) {
@@ -382,9 +383,6 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
   if (exemptIncome > 0) {
     amount.set(key("2042", "4EA"), exemptIncome);
   }
-  if (microFoncierExempt > 0) {
-    amount.set(key("2042", "4EB"), microFoncierExempt);
-  }
   if (totalLine250 > 0) {
     amount.set(key("2044", "Ligne 250"), totalLine250);
     if (scpiOwnInterests > 0 && personalInterests > 0) {
@@ -396,11 +394,10 @@ export function mapValidatedAmountsToBoxes(d: ExtractedData): {
   }
 
   for (const s of scpi) {
-    for (const c of s.incomeByCountry ?? []) {
-      const treatment = c.taxTreatment ?? "à confirmer";
+    for (const c of s.geographicBreakdown ?? []) {
       reviewHints.set(
         key("2047", `Pays ${c.country}`),
-        `Revenus ${c.country} (${c.income.value.toFixed(2)} €, traitement: ${treatment}). À reporter en 2047 selon la convention fiscale bilatérale.`,
+        `Quote-part ${c.country} (${c.percentage.toFixed(2)} %) sur SCPI ${s.scpiName}. À reporter en 2047 selon la convention fiscale bilatérale.`,
       );
     }
   }
@@ -511,7 +508,7 @@ function buildManualReviewItems(d: ExtractedData): ManualReviewItem[] {
   if (scpi.some((s) =>
     (s.foreignIncome?.value ?? 0) > 0 ||
     (s.foreignTaxCredit?.value ?? 0) > 0 ||
-    (s.incomeByCountry?.length ?? 0) > 0,
+    ((s.geographicBreakdown ?? []).length > 0),
   )) {
     items.push({
       id: "scpi-foreign-convention",
@@ -521,11 +518,11 @@ function buildManualReviewItems(d: ExtractedData): ManualReviewItem[] {
       relatedFormId: "2047",
     });
   }
+  const personalInterestsAny2 = (d.loans ?? []).some((l) => (l.annualInterests?.value ?? 0) > 0);
   if (scpi.some((s) =>
     (s.deductibleInterests?.value ?? 0) > 0 ||
-    (s.scpiLoanInterests?.value ?? 0) > 0 ||
-    (s.personalLoanInterests?.value ?? 0) > 0,
-  )) {
+    (s.scpiLoanInterests?.value ?? 0) > 0,
+  ) || personalInterestsAny2) {
     items.push({
       id: "scpi-deductible-interests-total",
       category: "deductible_expenses",
