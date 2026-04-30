@@ -463,6 +463,237 @@ export const BROCHURE_IR_2025_SEED: BrochureSeedChunk[] = [
     keywords: ["2044", "régime réel", "SCPI", "ligne 211", "ligne 250", "intérêts d'emprunt"],
   }),
 
+  // ──────────────── 2044 — Lignes SCPI détaillées ────────────────
+  base({
+    category: "scpi",
+    title: "2044 Ligne 111 — Recettes brutes SCPI / parts de sociétés immobilières",
+    pageNumber: 154,
+    formId: "2044",
+    sectionLabel: "Recettes — parts de sociétés immobilières",
+    boxCodes: ["Ligne 211"],
+    excerpt:
+      "Ligne 211 (report sur ligne 111) : quote-part des revenus fonciers français distribués par les " +
+      "SCPI, à reporter depuis le relevé fiscal annuel de la société de gestion.",
+    content:
+      "Annexe 2044, rubrique 110 « Vos parts de sociétés immobilières ou de FPI non passibles de l'IS ». " +
+      "Ligne 211 / 111 : recettes brutes (revenus fonciers bruts) quote-part des SCPI françaises et " +
+      "étrangères imposables en France. Reporter le montant indiqué par la société de gestion dans le " +
+      "relevé fiscal annuel. Si plusieurs SCPI, cumuler les montants. Indiquer le nom de chaque SCPI et " +
+      "l'adresse du siège : ex. « SOFIDY EUROPE INVEST — 303 Square des Champs Élysées, 91080 Évry ».",
+    keywords: ["2044", "ligne 111", "ligne 211", "recettes brutes", "SCPI", "revenus fonciers"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "2044 Ligne 112 — Frais et charges déductibles SCPI (hors intérêts)",
+    pageNumber: 154,
+    formId: "2044",
+    sectionLabel: "Charges déductibles SCPI",
+    boxCodes: ["Ligne 112"],
+    excerpt:
+      "Ligne 112 : frais et charges de la SCPI (frais de gestion, travaux, taxe foncière, assurances) " +
+      "HORS intérêts d'emprunt, reportés depuis le relevé fiscal de la société de gestion.",
+    content:
+      "Annexe 2044, ligne 112 (ou détail lignes 221-229) : ensemble des charges déductibles des revenus " +
+      "fonciers de la SCPI, HORS intérêts d'emprunt (déclarés séparément en ligne 113/250). Comprend : " +
+      "frais de gestion de la société, provisions pour charges, travaux déductibles, taxe foncière, " +
+      "primes d'assurance. Montants indiqués sur le relevé fiscal annuel de la société de gestion.",
+    keywords: ["2044", "ligne 112", "frais", "charges", "SCPI", "déductibles"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "2044 Ligne 113 — Intérêts d'emprunt SCPI + personnels (cumul)",
+    pageNumber: 154,
+    formId: "2044",
+    sectionLabel: "Intérêts d'emprunt",
+    boxCodes: ["Ligne 113", "Ligne 250"],
+    excerpt:
+      "Ligne 113 / 250 : intérêts d'emprunts contractés pour l'acquisition des parts de SCPI. " +
+      "Cumul des intérêts payés par la SCPI (relevé fiscal) ET des intérêts personnels (attestation bancaire).",
+    content:
+      "Annexe 2044, ligne 113 / ligne 250 : DEUX composantes à cumuler. (1) Intérêts d'emprunt de la " +
+      "SCPI elle-même (indiqués ligne 113 du relevé fiscal — ex. SOFIDY 33,30 €). (2) Intérêts " +
+      "d'emprunt personnels de l'associé ayant financé l'acquisition de ses parts à crédit (attestation " +
+      "bancaire). La ventilation par pays des intérêts personnels doit suivre la répartition géographique " +
+      "de la SCPI (indiquée dans le relevé fiscal). Les intérêts d'emprunt ne peuvent jamais créer un " +
+      "déficit imputable sur le revenu global (uniquement sur les revenus fonciers).",
+    keywords: ["2044", "ligne 113", "ligne 250", "intérêts d'emprunt", "SCPI", "cumul", "ventilation pays"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "2044 Ligne 114 — Bénéfice ou déficit foncier SCPI",
+    pageNumber: 154,
+    formId: "2044",
+    sectionLabel: "Résultat foncier",
+    boxCodes: ["Ligne 114"],
+    excerpt:
+      "Ligne 114 : bénéfice (+) ou déficit (−) foncier = ligne 111 − ligne 112 − ligne 113. " +
+      "Le déficit sur la part étrangère ne peut pas être négatif : reporter 0 le cas échéant.",
+    content:
+      "Annexe 2044, ligne 114 : résultat foncier par immeuble / SCPI = recettes brutes (111) − charges " +
+      "(112) − intérêts d'emprunt (113). Attention : pour la quote-part de revenus étrangers (Allemagne, " +
+      "RU, Espagne, Italie), le résultat ne peut pas être négatif. En cas de résultat négatif sur la part " +
+      "étrangère, reporter zéro. Le déficit foncier n'est possible que sur les revenus de source française.",
+    keywords: ["2044", "ligne 114", "bénéfice", "déficit", "résultat foncier", "SCPI"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "4EA — Revenus fonciers exonérés soumis au taux effectif (SCPI)",
+    pageNumber: 154,
+    formId: "2042",
+    sectionLabel: "Taux effectif",
+    boxCodes: ["4EA"],
+    excerpt:
+      "Case 4EA : revenus fonciers de source étrangère exonérés en France par convention fiscale mais " +
+      "retenus pour le calcul du taux effectif d'imposition (Belgique, Pays-Bas, Irlande notamment).",
+    content:
+      "Case 4EA de la 2042 : revenus fonciers étrangers provenant de pays dont la convention fiscale " +
+      "prévoit l'exonération en France avec prise en compte pour le taux effectif (méthode de " +
+      "l'exemption avec progressivité). Pays concernés pour les SCPI : Belgique, Pays-Bas, Irlande " +
+      "principalement. Le montant est indiqué dans le relevé fiscal SCPI. Ces revenus ne sont pas imposés " +
+      "en France mais majorent le taux applicable aux autres revenus du foyer.",
+    keywords: ["4EA", "taux effectif", "revenus exonérés", "SCPI", "Belgique", "Pays-Bas", "Irlande"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "4EB — Revenus fonciers exonérés micro-foncier taux effectif",
+    pageNumber: 154,
+    formId: "2042",
+    sectionLabel: "Micro-foncier taux effectif",
+    boxCodes: ["4EB"],
+    excerpt:
+      "Case 4EB : régime micro-foncier uniquement — recettes brutes exonérées à soumettre au taux " +
+      "effectif (montant indiqué dans le relevé fiscal SCPI, rubrique micro-foncier).",
+    content:
+      "Case 4EB de la 2042 : uniquement en régime micro-foncier. Recettes brutes étrangères exonérées " +
+      "par convention et retenues pour le calcul du taux effectif. Correspond aux revenus bruts " +
+      "étrangers soumis au taux effectif AVANT application de l'abattement micro-foncier de 30 %. " +
+      "Si le contribuable est au régime réel (2044), cette case n'est PAS utilisée.",
+    keywords: ["4EB", "micro-foncier", "taux effectif", "SCPI", "revenus exonérés"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "SCPI — Ventilation par pays et conventions fiscales applicables",
+    pageNumber: 120,
+    formId: "2047",
+    sectionLabel: "Conventions fiscales SCPI",
+    boxCodes: [],
+    excerpt:
+      "Les revenus fonciers de SCPI investies à l'étranger doivent être ventilés par pays selon la " +
+      "convention fiscale applicable : crédit d'impôt (Allemagne, RU, Espagne, Italie) ou taux effectif " +
+      "(Belgique, Pays-Bas, Irlande).",
+    content:
+      "Ventilation par pays pour les SCPI à investissement international. Deux mécanismes : " +
+      "(1) Crédit d'impôt = impôt français (cases 4BL + 8TK) : Allemagne, Royaume-Uni, Espagne, Italie " +
+      "— les revenus sont imposés en France et le crédit d'impôt annule la double imposition. " +
+      "(2) Taux effectif / exonération (case 4EA) : Belgique, Pays-Bas, Irlande — les revenus ne sont " +
+      "pas imposés en France mais majorent le taux d'imposition applicable aux autres revenus. " +
+      "Le relevé fiscal de la société de gestion indique la répartition géographique.",
+    keywords: ["SCPI", "ventilation pays", "convention fiscale", "crédit d'impôt", "taux effectif",
+      "Allemagne", "Royaume-Uni", "Espagne", "Italie", "Belgique", "Pays-Bas", "Irlande"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "SCPI — Intérêts d'emprunt personnels : ventilation par pays",
+    pageNumber: 154,
+    formId: "2044",
+    sectionLabel: "Ventilation intérêts d'emprunt",
+    boxCodes: ["Ligne 250"],
+    excerpt:
+      "Si l'associé a souscrit ses parts via un financement bancaire, les intérêts d'emprunt personnels " +
+      "doivent être ventilés par pays selon la répartition géographique de la SCPI.",
+    content:
+      "Ventilation des intérêts d'emprunt personnels par pays. Le relevé fiscal SCPI indique les " +
+      "pourcentages de ventilation (ex. SOFIDY EUROPE INVEST : France 0 %, Allemagne 14,70 %, " +
+      "RU 6,42 %, Belgique 4,26 %, Pays-Bas 40,60 %, Irlande 11,21 %, Espagne 22,82 %, Italie 0 %). " +
+      "Les intérêts des pays relevant du crédit d'impôt (Allemagne, RU, Espagne, Italie) se cumulent " +
+      "avec ceux de la SCPI en ligne 113/250 de l'annexe 2044. Les intérêts des pays relevant du taux " +
+      "effectif (Belgique, Pays-Bas, Irlande) se déduisent en case 4EA de la 2042.",
+    keywords: ["SCPI", "intérêts d'emprunt", "ventilation pays", "pourcentage", "répartition géographique"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "2047 Section 4 — Revenus fonciers SCPI imposables en France (crédit d'impôt)",
+    pageNumber: 120,
+    formId: "2047",
+    sectionLabel: "Revenus fonciers imposables en France",
+    boxCodes: [],
+    excerpt:
+      "Section 4 de la 2047 : revenus fonciers étrangers imposables en France avec crédit d'impôt " +
+      "(Allemagne, RU, Espagne, Italie). Indiquer l'adresse du siège de la SCPI et le montant par pays.",
+    content:
+      "Annexe 2047, section 4 « Revenus fonciers imposables en France ». Pour les SCPI détenant des " +
+      "actifs en Allemagne, Royaume-Uni, Espagne, Italie : déclarer les revenus fonciers étrangers imposables " +
+      "en France (correspondant au bénéfice foncier, ligne 114 de la 2044 quote-part étrangère). " +
+      "Adresse à indiquer : siège de la SCPI (ex. 303 Square des Champs Élysées, 91080 Évry). " +
+      "Ce montant est reporté automatiquement en case 4BL de la 2042.",
+    keywords: ["2047", "section 4", "revenus fonciers", "SCPI", "crédit d'impôt", "France"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "2047 Section 6 — Revenus SCPI ouvrant droit à crédit d'impôt = IR français",
+    pageNumber: 120,
+    formId: "2047",
+    sectionLabel: "Crédit d'impôt = IR français",
+    boxCodes: ["8TK"],
+    excerpt:
+      "Section 6 de la 2047 : détail par pays des revenus fonciers ouvrant droit au crédit d'impôt " +
+      "égal à l'impôt français. Le total est reporté en case 8TK de la 2042.",
+    content:
+      "Annexe 2047, section 6 « Revenus imposables ouvrant droit à un crédit d'impôt égal au montant " +
+      "de l'impôt français ». Détail par pays : Allemagne, Royaume-Uni, Espagne, Italie — indiquer " +
+      "pour chaque pays la nature du revenu (revenu foncier) et le montant avant déduction de l'impôt " +
+      "étranger. Le total est reporté en case 8TK de la 2042. Ce crédit d'impôt annule la double " +
+      "imposition et s'applique aussi aux prélèvements sociaux (vérifier 17,2 % × 8TK sur l'avis).",
+    keywords: ["2047", "section 6", "8TK", "SCPI", "crédit d'impôt", "impôt français"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "SCPI — Plus-values immobilières ligne 3VZ",
+    pageNumber: 154,
+    formId: "2042",
+    sectionLabel: "Plus-values SCPI",
+    boxCodes: ["3VZ"],
+    excerpt:
+      "Les plus-values immobilières réalisées directement ou indirectement par la SCPI sont imposées " +
+      "au niveau de la SCPI (19 %) et doivent être reportées en case 3VZ de la 2042.",
+    content:
+      "Case 3VZ : plus-values nettes de cession d'immeubles ou de biens meubles déjà imposées à 19 %. " +
+      "Pour les SCPI, ce montant est indiqué dans le relevé fiscal annuel. Les plus-values sont imposées " +
+      "directement au niveau de la SCPI (prélèvement de 19 % + prélèvements sociaux) et ne donnent " +
+      "lieu qu'à une déclaration informative en 3VZ. Le montant est ajouté au revenu fiscal de référence " +
+      "mais n'est pas soumis à un impôt supplémentaire.",
+    keywords: ["3VZ", "plus-values", "SCPI", "19%", "cession d'immeuble"],
+  }),
+
+  base({
+    category: "scpi",
+    title: "SCPI — IFI (Impôt sur la Fortune Immobilière) : valeur déclarative",
+    pageNumber: 154,
+    formId: "2042-IFI",
+    sectionLabel: "IFI SCPI",
+    boxCodes: [],
+    excerpt:
+      "Pour l'IFI, les associés de SCPI déclarent la valeur IFI par part multipliée par le nombre " +
+      "de parts détenues au 1er janvier. La valeur IFI par part est indiquée dans le relevé fiscal.",
+    content:
+      "IFI (Impôt sur la Fortune Immobilière) : les parts de SCPI sont des actifs immobiliers taxables " +
+      "à l'IFI. La valeur à déclarer = valeur IFI par part × nombre de parts au 1er janvier N+1. " +
+      "La valeur IFI par part est communiquée chaque année par la société de gestion dans le relevé " +
+      "fiscal (ex. SOFIDY EUROPE INVEST : 187,08 € × 404 parts = 75 580 €). Cette valeur tient compte " +
+      "du ratio immobilier/financier de la SCPI.",
+    keywords: ["IFI", "SCPI", "valeur par part", "fortune immobilière"],
+  }),
+
   base({
     category: "deductible_expenses",
     title: "2044 ligne 250 — Intérêts d'emprunt déductibles",
