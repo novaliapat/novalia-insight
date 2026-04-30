@@ -178,11 +178,20 @@ export function detectSituations(d: ExtractedData): {
   if (scpi.length > 0) {
     situations.push("Revenus fonciers issus de SCPI.");
     hasRealEstate = true;
-    if (scpi.some((s) => (s.foreignIncome?.value ?? 0) > 0)) {
+    if (scpi.some((s) =>
+      (s.foreignIncome?.value ?? 0) > 0 ||
+      (s.foreignTaxCredit?.value ?? 0) > 0 ||
+      (s.exemptIncome?.value ?? 0) > 0 ||
+      (s.incomeByCountry?.length ?? 0) > 0,
+    )) {
       situations.push("Revenus de SCPI de source étrangère (convention fiscale à appliquer).");
       hasForeign = true;
     }
-    if (scpi.some((s) => (s.deductibleInterests?.value ?? 0) > 0)) {
+    if (scpi.some((s) =>
+      (s.deductibleInterests?.value ?? 0) > 0 ||
+      (s.scpiLoanInterests?.value ?? 0) > 0 ||
+      (s.personalLoanInterests?.value ?? 0) > 0,
+    )) {
       situations.push("Intérêts d'emprunt liés aux investissements SCPI/fonciers.");
     }
   }
@@ -508,7 +517,11 @@ function buildManualReviewItems(d: ExtractedData): ManualReviewItem[] {
   const items: ManualReviewItem[] = [];
   const scpi = d.scpi ?? [];
 
-  if (scpi.some((s) => (s.foreignIncome?.value ?? 0) > 0)) {
+  if (scpi.some((s) =>
+    (s.foreignIncome?.value ?? 0) > 0 ||
+    (s.foreignTaxCredit?.value ?? 0) > 0 ||
+    (s.incomeByCountry?.length ?? 0) > 0,
+  )) {
     items.push({
       id: "scpi-foreign-convention",
       category: "scpi",
@@ -517,11 +530,15 @@ function buildManualReviewItems(d: ExtractedData): ManualReviewItem[] {
       relatedFormId: "2047",
     });
   }
-  if (scpi.some((s) => (s.deductibleInterests?.value ?? 0) > 0)) {
+  if (scpi.some((s) =>
+    (s.deductibleInterests?.value ?? 0) > 0 ||
+    (s.scpiLoanInterests?.value ?? 0) > 0 ||
+    (s.personalLoanInterests?.value ?? 0) > 0,
+  )) {
     items.push({
       id: "scpi-deductible-interests-total",
       category: "deductible_expenses",
-      reason: "Intérêts d'emprunt SCPI détectés : vérifier le total et la déductibilité (acquisition, conservation, amélioration).",
+      reason: "Intérêts d'emprunt SCPI détectés : vérifier le total (intérêts SCPI + intérêts personnels) et la déductibilité (acquisition, conservation, amélioration).",
       suggestedAction: "Comparer avec les attestations bancaires annuelles avant report en 2044 ligne 250.",
       relatedFormId: "2044",
       relatedBox: "Ligne 250",
